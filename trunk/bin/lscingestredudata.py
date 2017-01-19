@@ -63,6 +63,7 @@ if __name__ == "__main__":
             pippo = lsc.mysqldef.getmissing(conn, epoch1, epoch2, _telescope, 'photlco')
             print pippo
             print 'here'
-        listingested = [i['filepath']+i['filename'] for i in pippo (i['objname'] == _object or not _object)]
+        print pippo
+        listingested = [i['filepath']+i['filename'] for i in pippo if (i['objname'] == _object or not _object)]
 
     lsc.mysqldef.ingestredu(listingested, _force, 'photlco')
