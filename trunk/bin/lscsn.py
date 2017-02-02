@@ -309,18 +309,8 @@ if __name__ == "__main__":
                         size = _size
                     else:
                         size = 7
-
-                    x1 = int(float(xx0) - size * fwhm0)
-                    if x1 <= 0:
-                        x1 = 0
-                    x2 = int(float(xx0) + size * fwhm0)
-                    y1 = int(float(yy0) - size * fwhm0)
-                    if y1 <= 0:
-                        y1 = 0
-                    y2 = int(float(yy0) + size * fwhm0)
                     lsc.util.delete("original.fits")
-                    iraf.imcopy(imglong + "[SCI][" + str(x1) + ":" + str(x2) + "," + str(y1) + ":" + str(y2) + "]",
-                                "original.fits")
+                    lsc.util.imcopy(imglong, 'original.fits', (float(xx0), float(yy0)), 2*size*fwhm0)
                 else:
                     repeat = 'n'
                     while repeat in ['n','no','NO','N']:
@@ -329,27 +319,18 @@ if __name__ == "__main__":
                             size = _size
                         else:
                             size = int(size)
-                        x1 = int(float(xx0) - size * fwhm0)
-                        if x1 <= 0: x1 = 0
-                        x2 = int(float(xx0) + size * fwhm0)
-                        y1 = int(float(yy0) - size * fwhm0)
-                        if y1 <= 0: y1 = 0
-                        y2 = int(float(yy0) + size * fwhm0)
                         lsc.util.delete("original.fits")
-                        iraf.imcopy(imglong + "[SCI][" + str(x1) + ":" + str(x2) + "," + str(y1) + ":" + str(y2) + "]",
-                                    "original.fits")
+                        lsc.util.imcopy(imglong, 'original.fits', (float(xx0), float(yy0)), 2*size*fwhm0)
                         iraf.set(stdimage='imt512')
                         _tmp1, _tmp2, goon = lsc.util.display_image('original.fits', 1, '', '', False, _xsize=.5,
                                                                     _ysize=.5)
                         repeat = raw_input('### ok ? [y/n] ? [y] ')
                         if not repeat:
                             repeat = 'y'
-            #####################################################################################
-            #############################  get SN coordinate after the cut ######################
-            if skip == 0:
-                if x1 and y1:
-                    xxsn=xxsn-float(x1)
-                    yysn=yysn-float(y1)
+                x1 = float(xx0) - size * fwhm0
+                y1 = float(yy0) - size * fwhm0
+                xxsn -= x1
+                yysn -= y1
             ####################################### plot with right cuts   ##########################
             z11, z22='',''
             if skip == 0:

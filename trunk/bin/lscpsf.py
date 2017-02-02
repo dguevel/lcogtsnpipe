@@ -563,13 +563,10 @@ if __name__ == "__main__":
 
     for img in imglist:
         if not option.use_sextractor and not _catalog:
-            targetid = lsc.mysqldef.targimg(img)
-            cats = lsc.mysqldef.query(["select sloan_cat, landolt_cat, apass_cat from targets where id="+str(targetid)], lsc.conn)
-            if cats:
-                for system in ['sloan', 'apass', 'landolt']:
-                    if cats[0][system + '_cat']:
-                        _catalog = lsc.__path__[0] + '/standard/cat/' + system + '/' + cats[0][system + '_cat']
-                        break
+            for system in ['sloan', 'apass', 'landolt']:
+                _catalog = lsc.util.getcatalog(img, system)
+                if _catalog:
+                    break
         if '.fits' in img: img = img[:-5]
         if os.path.exists(img + '.sn2.fits') and not option.redo:
             print img + ': psf already calculated'

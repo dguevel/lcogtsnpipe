@@ -454,47 +454,32 @@ def sdss_swarp(imglist,_telescope='spectral',_ra='',_dec='',output='', objname='
     return output, varimg
 
 def northupeastleft(filename='', data=None, header=None):
-    from astropy.io.fits import getdata, PrimaryHDU
     if filename:
-        data, header = getdata(filename, header=True)
+        data, header = fits.getdata(filename, header=True)
+    else:
+        header = header.copy()
+    if abs(header['cd1_2']) > abs(header['cd1_1']):
+        data = data.T
+        header['cd1_1'], header['cd1_2'] = header['cd1_2'], header['cd1_1']
+        header['cd2_2'], header['cd2_1'] = header['cd2_1'], header['cd2_2']
+        header['crpix1'], header['crpix2'] = header['crpix2'], header['crpix1']
+        header['naxis1'], header['naxis2'] = header['naxis2'], header['naxis1']
+        header['datasec'] = '[' + ','.join(header['datasec'].strip('[]').split(',')[::-1]) + ']'
+        print 'swapping x and y axes'
     if header['cd1_1'] > 0:
-        data = np.fliplr(data)
+        data = data[:,::-1]
         header['cd1_1'] *= -1
+        header['cd2_1'] *= -1
         print 'flipping around x'
     if header['cd2_2'] < 0:
-        data = np.flipud(data)
+        data = data[::-1]
         header['cd2_2'] *= -1
+        header['cd1_2'] *= -1
         print 'flipping around y'
     if filename:
-        from os import remove
-        remove(filename)
-        out_fits = PrimaryHDU(data=data, header=header)
-        out_fits.writeto(filename, clobber=True, output_verify='fix')
+        fits.writeto(filename, data, header, clobber=True, output_verify='fix')
     else:
         return data, header
-
-def rotateflipimage(img,rot180=False,flipx=False,flipy=False):
-   from astropy.io import fits
-   import os
-   hd = fits.getheader(img)
-   ar = fits.getdata(img)
-   new_header = hd
-   CD1_1 = hd['CD1_1']
-   CD2_2 = hd['CD2_2']
-   if rot180:
-      new_header['CD1_1']  = CD1_1*(-1)
-      new_header['CD2_2']  = CD2_2*(-1)
-      ar = np.rot90(np.rot90(ar))
-   if flipy:
-      new_header['CD2_2']  = CD2_2*(-1)
-      ar = np.flipud(ar)
-   if flipx:
-      new_header['CD1_1']  = CD1_1*(-1)
-      ar = np.fliplr(ar)
-   os.system('rm '+img)
-   out_fits = fits.PrimaryHDU(header=new_header, data=ar)
-   out_fits.writeto(img, clobber=True, output_verify='fix')
-   return img
 
 ##################################################################################
 def sloanimage(img,survey='sloan',frames=[], show=False, force=False):

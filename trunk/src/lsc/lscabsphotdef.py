@@ -3,6 +3,10 @@ from astropy.io import fits
 import numpy as np
 from scipy import stats, odr
 import matplotlib.pyplot as plt
+import warnings
+with warnings.catch_warnings(): # so cronic doesn't email on the "experimental" warning
+    warnings.simplefilter('ignore')
+    from astroquery.sdss import SDSS
 
 def limmag(img, zeropoint=0, Nsigma_limit=3, _fwhm = 5):
     image = fits.open(img)
@@ -1282,3 +1286,40 @@ def zeronew(ZZ,maxiter=10,nn=5,verbose=False,show=False):
      return ZZcut,sigmacut,mediancut
 
 #######################################################################
+def sloan2file(ra, dec, radius=10., mag1=13., mag2=20., output='sloan.cat'):
+    '''download an SDSS catalog'''
+    t = SDSS.query_sql('''select P.ra, P.dec, P.objID, P.u, P.err_u, P.g, P.err_g, P.r, P.err_r, P.i, P.err_i, P.z, P.err_z
+                          from PhotoPrimary as P, dbo.fGetNearbyObjEq({}, {}, {}) as N
+                          where P.objID=N.objID and P.type=6 and P.r >= {} and P.r <= {}'''.format(ra, dec, radius, mag1, mag2))
+    if t is not None:
+        t['ra'].format ='%16.12f'
+        t['dec'].format = '%16.13f'
+        t['objID'].format = '%19d'
+        for filt in 'ugriz':
+            t[filt].format = '%8.5f'
+            t['err_'+filt].format = '%11.9f'
+        t.meta['comments'] = [
+        'BEGIN CATALOG HEADER',
+        '   type btext',
+        '   nheader 1',
+        '       csystem J2000',
+        '   nfields 13',
+        '       ra     1 0 d degrees ' + t['ra'].format,
+        '       dec    2 0 d degrees ' + t['dec'].format,
+        '       id     3 0 c INDEF   ' + t['objID'].format,
+        '       u      4 0 r INDEF   ' + t['u'].format,
+        '       uerr   5 0 r INDEF   ' + t['err_u'].format,
+        '       g      6 0 r INDEF   ' + t['g'].format,
+        '       gerr   7 0 r INDEF   ' + t['err_g'].format,
+        '       r      8 0 r INDEF   ' + t['r'].format,
+        '       rerr   9 0 r INDEF   ' + t['err_r'].format,
+        '       i     10 0 r INDEF   ' + t['i'].format,
+        '       ierr  11 0 r INDEF   ' + t['err_i'].format,
+        '       z     12 0 r INDEF   ' + t['z'].format,
+        '       zerr  13 0 r INDEF   ' + t['err_z'].format,
+        'END CATALOG HEADER'
+        ]
+        t.write(output, format='ascii.no_header')
+        print len(t), 'matching objects. Catalog saved to', output
+    else:
+        print 'No matching objects.'

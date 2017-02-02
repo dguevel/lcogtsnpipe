@@ -54,7 +54,7 @@ def download_frame(frame, force=False):
         daydir = 'data/0m4/' + dayobs + '/'
     else:
         print 'failed to identify telescope:', frame['TELID'], frame['INSTRUME']
-    filepath = lsc.util.workdirectory + daydir
+    filepath = os.path.join(lsc.util.workdirectory, daydir)
 
     if not os.path.isdir(filepath):
         os.mkdir(filepath)
@@ -102,8 +102,8 @@ instrumentids = {inst['name']: inst['id'] for inst in instruments}
 
 photlcoraw_to_hdrkey = {'objname': 'OBJECT',
                         'dayobs': 'DAY-OBS',
-                        'dateobs': 'DATE-OBS', # ignores everything after T
-                        'ut': 'UTSTART', # ignores everything after .
+                        'dateobs': 'DATE-OBS',
+                        'ut': 'UTSTART',
                         'mjd': 'MJD-OBS',
                         'exptime': 'EXPTIME',
                         'filter': 'FILTER',
@@ -125,8 +125,8 @@ photlcoraw_to_hdrkey = {'objname': 'OBJECT',
 
 speclcoraw_to_hdrkey = {'objname': 'OBJECT',
                         'dayobs': 'DAY-OBS',
-                        'dateobs': 'DATE-OBS', # ignores everything after T
-                        'ut': 'UTSTART', # ignores everything after .
+                        'dateobs': 'DATE-OBS',
+                        'ut': 'UTSTART',
                         'mjd': 'MJD-OBS',
                         'exptime': 'EXPTIME',
                         'filter': 'FILTER',
@@ -191,6 +191,10 @@ def db_ingest(filepath, filename, force=False):
                     dbdict[dbcol] = Angle(hdr[hdrkey], u.hourangle).to_string(u.deg, decimal=True, precision=7)
                 elif hdrkey in ['DEC', 'CAT-DEC']:
                     dbdict[dbcol] = Angle(hdr[hdrkey], u.deg).to_string(decimal=True, precision=7)
+                elif hdrkey == 'DATE-OBS':
+                    dbdict[dbcol] = hdr['DATE-OBS'].split('T')[0]
+                elif hdrkey == 'UTSTART':
+                    dbdict[dbcol] = hdr['UTSTART'].split('.')[0]
                 else:
                     dbdict[dbcol] = hdr[hdrkey]
         if hdr['TELESCOP'] not in telescopeids:

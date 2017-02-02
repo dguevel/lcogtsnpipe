@@ -42,11 +42,11 @@ if __name__ == "__main__":
     namemag = {'fit': ['smagf', 'smagerrf'], 'ph': ['magp3', 'merrp3']}
     allfilters = ''
     for fil in dicti:
-        allfilters = allfilters + filterst1[fil]
+        allfilters += filterst1[fil]
     queste0 = lsc.myloopdef.chosecolor(allfilters, False)
     queste1 = lsc.myloopdef.chosecolor(allfilters, True)
 
-    if _exzp:
+    if _exzp: # copy all the zero points from the standards to the science images (in headers & database)
         lista2 = lsc.util.readlist(_exzp)
         dicti2 = lsc.lscabsphotdef.makecatalogue(lista2)
         for _filter2 in dicti2:
@@ -58,7 +58,6 @@ if __name__ == "__main__":
                             dicti[_filter2][img][jj] = dicti2[_filter2][img2][jj]
                             lsc.util.updateheader(img, 0, {jj: [dicti2[_filter2][img2][jj], 'a b sa sb in y=a+bx']})
                             lsc.util.updateheader(img, 0, {'CATALOG': [str(img2), 'catalogue source']})
-                            # try:
                             mm = jj[2:]
                             result = string.split(dicti2[_filter2][img2][jj])
                             if mm[0] == mm[2]:
@@ -75,8 +74,6 @@ if __name__ == "__main__":
                                                      string.split(re.sub('sn2.fits', 'fits', img), '/')[-1])
                             lsc.mysqldef.updatevalue('photlco', 'dc' + str(num), result[4],
                                                      string.split(re.sub('sn2.fits', 'fits', img), '/')[-1])
-                            #except:
-                            #     print 'module mysqldef not found'
     for _filter in dicti:
         for img in dicti[_filter]:
             secondimage = []
@@ -90,7 +87,7 @@ if __name__ == "__main__":
                         if filt2 != _filter:
                             for jj in dicti[filt2].keys():
                                 for ll in dicti[filt2][jj].keys():
-                                    if 'ZP' in ll and ll[-2:] == cc:
+                                    if 'ZP' in ll and ll[-2:] == cc: # different filter with same color
                                         secondimage.append(jj)
                                         mjdvec.append(dicti[filt2][jj]['mjd'] - dicti[_filter][img]['mjd'])
                                         filtvec.append(filt2)
@@ -128,8 +125,6 @@ if __name__ == "__main__":
                 else:
                     print dicti[_filter][img]
                     sys.exit('siteid not in lsc.sites.extinction')
-                    # instrumental mag to exposure 1 second corrected for airmass
-                # mag0=dicti[_filter][img][namemag[_typemag][0]]+2.5*np.log10(dicti[_filter][img]['exptime'])-kk[filterst1[_filter]]*dicti[_filter][img]['airmass']
                 mag0 = dicti[_filter][img][namemag[_typemag][0]] - kk[filterst1[_filter]] * dicti[_filter][img][
                     'airmass']
                 dmag0 = dicti[_filter][img][namemag[_typemag][1]]
@@ -145,8 +140,6 @@ if __name__ == "__main__":
                 else:
                     print dicti[_filter2][img2]
                     sys.exit('siteid not in lsc.sites.extinction')
-                    #                                                    instrumental mag to exposure 1 second corrected for airmass
-                #                mag1=dicti[_filter2][img2][namemag[_typemag][0]]+2.5*np.log10(dicti[_filter2][img2]['exptime'])-kk[filterst1[_filter2]]*dicti[_filter2][img2]['airmass']
                 mag1 = dicti[_filter2][img2][namemag[_typemag][0]] - kk[filterst1[_filter2]] * dicti[_filter2][img2][
                     'airmass']
                 dmag1 = dicti[_filter2][img2][namemag[_typemag][1]]
@@ -181,7 +174,6 @@ if __name__ == "__main__":
 
                     ion()
                     clf()
-                    #print len(pos0)
                     plot(ra1, dec1, 'xb')
                     plot(ra0, dec0, 'xr')
                     plot(ra0cut, dec0cut, 'xg')
@@ -232,22 +224,15 @@ if __name__ == "__main__":
                 f.close()
 
                 if _interactive:    raw_input('go on')
-                try:
-                    if os.path.isfile(re.sub('sn2.fits', 'cat', img)):
-                        lsc.mysqldef.updatevalue('photlco', 'abscat', string.split(output, '/')[-1],
-                                                 re.sub('sn2.fits', 'fits', string.split(img, '/')[-1]))
-                    else:
-                        lsc.mysqldef.updatevalue('photlco', 'abscat', 'X',
-                                                 re.sub('sn2.fits', 'fits', string.split(img, '/')[-1]))
-                except:
-                    print 'module mysqldef not found'
-                    #print _filter, col, output
+                if os.path.isfile(re.sub('sn2.fits', 'cat', img)):
+                    lsc.mysqldef.updatevalue('photlco', 'abscat', string.split(output, '/')[-1],
+                                             re.sub('sn2.fits', 'fits', string.split(img, '/')[-1]))
+                else:
+                    lsc.mysqldef.updatevalue('photlco', 'abscat', 'X',
+                                             re.sub('sn2.fits', 'fits', string.split(img, '/')[-1]))
             else:
                 print 'no other filters with calibration in ' + _filter + ' band'
                 print img, _filter, dicti[_filter][img].keys()
-                try:
-                    lsc.mysqldef.updatevalue('photlco', 'abscat', 'X',
-                                             re.sub('sn2.fits', 'fits', string.split(img, '/')[-1]))
-                except:
-                    print 'module mysqldef not found'
+                lsc.mysqldef.updatevalue('photlco', 'abscat', 'X',
+                                         re.sub('sn2.fits', 'fits', string.split(img, '/')[-1]))
 

@@ -140,10 +140,13 @@ def run_getmag(imglist, _output='', _interactive=False, _show=False, _bin=1e-10,
     if _output:
         ff = open(_output, 'w')
 
-    filters = []
+    filters_used = []
     for _tel in setup:
-        filters += setup[_tel].keys()
-    filters = list(set(filters))
+        filters_used += setup[_tel].keys()
+    filters = []
+    for filt in ['U', 'B', 'V', 'R', 'I', 'up', 'gp', 'rp', 'ip', 'zs']:
+        if filt in filters_used:
+            filters.append(filt)
     for _tel in setup:
         line0 = '# %15s%15s' % ('dateobs', 'jd')
         for filt in filters:
@@ -231,58 +234,33 @@ def run_cat(imglist, extlist, _interactive=False, mode=1, _type='fit', _fix=Fals
 
 
 def run_wcs(imglist, interactive=False, redo=False, _xshift=0, _yshift=0, catalogue='', database='photlco', mode='sv'):
-    import lsc
-    import os, string, glob, re  # MySQLdb,
-    import mysqldef
-    # direc=lsc.__path__[0]
-    direc = ''
     for img in imglist:
         status = checkstage(img, 'wcs')
-        print status
         if status == -4 and redo:
             print 'wcs not good, try again'
-            mysqldef.updatevalue(database, 'quality', 0, string.split(img, '/')[-1])
+            lsc.mysqldef.updatevalue(database, 'quality', 0, os.path.split(img)[-1])
             status = checkstage(img, 'wcs')
-
-        if status == 0: rr = '-r'
-        if redo:
-            rr = '-r'
-        else:
-            rr = ''
-        if interactive:
-            ii = '-i'
-        else:
-            ii = ''
-        if catalogue:
-            cc = ' -c ' + catalogue
-        else:
-            cc = ''
         if status >= -1:
-            ggg = mysqldef.getfromdataraw(conn, database, 'filename', str(img), '*')
+            ggg = lsc.mysqldef.getfromdataraw(conn, database, 'filename', img, '*')
             _dir = ggg[0]['filepath']
-            if not cc:
-                ###########################################
-                print _dir + img
-                _ra0, _dec0, _SN0 = lsc.util.checksnlist(_dir + img, 'supernovaelist.txt')
-                if not _SN0:    _ra0, _dec0, _SN0 = lsc.util.checksnlist(_dir + img, 'standardlist.txt')
-                if not _SN0:    _ra0, _dec0, _SN0, _tt = lsc.util.checksndb(_dir + img, 'targets')
-                print _ra0, _dec0, _SN0
-                if _SN0:
-                    _catalogue = glob.glob(lsc.__path__[0] + '/standard/cat/apass/' + _SN0 + '*')
-                    if len(_catalogue) == 0:
-                        _catalogue = glob.glob(lsc.__path__[0] + '/standard/cat/sloan/' + _SN0 + '*')
-                else:
-                    _catalogue = []
-                if len(_catalogue) > 0:
-                    cc = ' -c ' + re.sub(lsc.__path__[0] + '/standard/cat/', '', _catalogue[0])
-            #               ############################
             if mode =='sv':
-                command = 'lscastro.py ' + _dir + img + ' ' + rr + ' ' + ii + ' -m  vizir --xshift ' + str(
-                    _xshift) + ' --yshift ' + str(_yshift) + cc  #+' '+ff+' '+cc+' -t '+_type+' '+ss
+                command = 'lscastro.py ' + _dir + img + ' -m  vizir --xshift ' + str(_xshift) + ' --yshift ' + str(_yshift)
+                if status == 0 or redo:
+                    command += ' -r'
+                if interactive:
+                    command += ' -i'
+                if catalogue:
+                    command += ' -c ' + catalogue
+                else:
+                    for field in ['apass', 'sloan', 'landolt']:
+                        _catalogue = lsc.util.getcatalog(_dir + img, field)
+                        if _catalogue:
+                            command += ' -c ' + _catalogue
+                            break
                 print command
                 os.system(command)
             elif mode == 'astrometry':
-                lsc.lscastrodef.run_astrometry(_dir + img, True,redo)
+                lsc.lscastrodef.run_astrometry(_dir + img, True, redo)
             else:
                 print str(_mode)+' not defined'
         elif status == 0:
@@ -297,7 +275,7 @@ def run_wcs(imglist, interactive=False, redo=False, _xshift=0, _yshift=0, catalo
             print 'status ' + str(status) + ': unknown status'
 
 
-def run_zero(imglist, _fix, _type, _field, _catalogue, _color='', interactive=False, redo=False, show=False, _cutmag=99,
+def run_zero(imglist, _fix, _type, _field, catalogue, _color='', interactive=False, redo=False, show=False, _cutmag=99,
              database='photlco', _calib='', zcatnew=False):
     import lsc
     import os, string, glob  # MySQLdb,
@@ -337,30 +315,14 @@ def run_zero(imglist, _fix, _type, _field, _catalogue, _color='', interactive=Fa
         if status >= 1:
             ggg = mysqldef.getfromdataraw(conn, database, 'filename', str(img), '*')
             _dir = ggg[0]['filepath']
-            if not _catalogue:
-                _ra0, _dec0, _SN0 = lsc.util.checksnlist(_dir + img, 'supernovaelist.txt')
-                if not _SN0:
-                    _ra0, _dec0, _SN0 = lsc.util.checksnlist(_dir + img, 'standardlist.txt')
-                if not _SN0:
-                    _ra0, _dec0, _SN0, _tt = lsc.util.checksndb(_dir + img, 'targets')
-                print _ra0, _dec0, _SN0
-                if _SN0:
-                    if not _calib:
-                        _catalogue = glob.glob(lsc.__path__[0] + '/standard/cat/' + _field + '/' + _SN0 + '*')
-                    elif _calib == 'natural':
-                        _catalogue = glob.glob(lsc.__path__[0] + '/standard/cat/' + _field + 'natural/*' + _SN0 + '*')
-                    elif _calib == 'sloanprime':
-                        _catalogue = glob.glob(lsc.__path__[0] + '/standard/cat/sloanprime/' + _SN0 + '*')
-                    elif _calib == 'apass':
-                        _catalogue = glob.glob(lsc.__path__[0] + '/standard/cat/apass/' + _SN0 + '*')
-                    else:
-                        _catalogue = glob.glob(lsc.__path__[0] + '/standard/cat/' + _field + '/' + _SN0 + '*')
-                if _catalogue:
-                    _catalogue = _catalogue[0]
-            if _catalogue:
-                cc = ' -c ' + _catalogue + ' '
+            if catalogue:
+                cc = '-c ' + catalogue
             else:
-                cc = ''
+                _catalogue = lsc.util.getcatalog(_dir + img, _calib if _calib else _field)
+                if _catalogue:
+                    cc = '-c ' + _catalogue
+                else:
+                    cc = ''
             if zcatnew: zcn = '--zcatnew'
             else: zcn = ''
             command = ' '.join(['lscabsphot.py', _dir+re.sub('fits', 'sn2.fits',img), ii, rr, ff, cc, '-t', _type, ss, dd, hh, ll, '--cutmag', str(_cutmag), zcn])

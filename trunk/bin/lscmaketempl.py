@@ -187,7 +187,7 @@ if __name__ == "__main__":
                         iraf.imarith(img0, '-', '_tmp2.fits', imgout, verbose='yes')
                     else:
                         print '\####  copy file '
-                        iraf.imcopy(img0 + '[SCI]', imgout, verbose='yes')
+                        lsc.util.imcopy(img0, imgout)
                     if _show:
                         _z11, _z22, goon = lsc.util.display_image(imgout, 2, z11, z22, False)
                         answ = raw_input('ok  ? [[y]/n]')
@@ -212,7 +212,7 @@ if __name__ == "__main__":
                               'wcs': lsc.util.readkey3(hd, 'wcserr'), 'instrument': lsc.util.readkey3(hd, 'instrume'),
                               'ra0': lsc.util.readkey3(hd, 'RA'), 'dec0': lsc.util.readkey3(hd, 'DEC')}
                 dictionary['filename'] = string.split(imgout, '/')[-1]
-                dictionary['filepath'] = lsc.util.workdirectory + 'data/lsc/' + lsc.util.readkey3(hd, 'date-night') + '/'
+                dictionary['filepath'] = os.path.join(lsc.util.workdirectory, 'data/lsc/') + lsc.util.readkey3(hd, 'date-night') + '/'
                 dictionary['filetype'] = 4
 
                 dictionary['telescopeid'] = lsc.mysqldef.getfromdataraw(conn, 'telescopes', 'name', dictionary['telescope'], column2='id')[0]['id']

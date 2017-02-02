@@ -1356,17 +1356,19 @@ def gettargetid(_name, _ra, _dec, conn, _radius=.01, verbose=False):
 
 ###############################################################
 def get_snex_uid(interactive=True, return_fullname=False):
-    from socket import gethostname
+    from getpass import getuser
     from lsc import conn
-    snex_uids = {'griffin': 52, 'svalenti': 23, 'iarcavi': 43, 'cmccully': 78}
-    fullnames = {'griffin': 'Griffin Hosseinzadeh', 'svalenti': 'Stefano Valenti', 'iarcavi': 'Iair Arcavi',
-                 'cmccully': 'Curtis McCully'}
-    unix_user = gethostname().split('-')[0]
+
+    snex_uids = {'griffin': 52, 'svalenti': 23, 'iarcavi': 43, 'cmccully': 78, 'dhiramatsu': 192}
+    unix_user = getuser()
+
     if unix_user in snex_uids:
         snex_uid = snex_uids[unix_user]
-        fullname = fullnames[unix_user]
+        if return_fullname:
+            usersdict = query(['select id, firstname, lastname from users where id=' + str(snex_uid)], conn)
+            fullname = usersdict[0]['firstname'] + ' ' + usersdict[0]['lastname']
     else:
-        print 'Your computer is not associated with a SNEx account.'
+        print 'Your username is not associated with a SNEx account.'
         snex_uid = None
         fullname = None
         if interactive:

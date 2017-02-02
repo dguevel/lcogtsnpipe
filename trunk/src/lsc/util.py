@@ -1,31 +1,21 @@
-import socket
 import sys
+import os
+from astropy.io import fits
+from astropy.nddata import Cutout2D
+from astropy.wcs import WCS
+import lsc
 
-host = socket.gethostname()
-if host in ['wwwdevsba']:
-   workdirectory =  '/home/supernova/'
-   configfile = 'configure'
-elif host in ['svalenti-linux.lco.gtn','cc3.lco.gtn',\
-                 'cmccully-linux.lco.gtn','iarcavi-linux.lco.gtn','campus-055-064.ucdavis.edu','iairs-mbp']:
-   workdirectory =  '/science/supernova/'
-   configfile = 'configure'
-elif 'valenti' in host:
-   workdirectory =  '/science/supernova/'
-   configfile = 'configure'
-elif host in ['supernova.lco.gtn', 'griffin-linux.lco.gtn', 'griffin-Aspire-M5-583P']:
+workdirectory = os.getenv('LCOSNDIR')
+if workdirectory is None:
     workdirectory = '/supernova/'
-    configfile = 'configure'
-elif host == 'astrointern.lco.gtn':
-    workdirectory = '/home/dguevel/snwd/'
-    configfile = 'configure'
-else:
-   sys.exit('ERROR: host machine not recognise, please add your machine in the util file')
 
-def readpasswd(directory,_file):
+configfile = os.path.join(workdirectory, 'configure')
+
+def readpasswd(configfile):
    """ read all information to connect to database from configuration file  
    """
    from numpy import genfromtxt
-   data = genfromtxt(directory+_file,str)
+   data = genfromtxt(configfile, str)
    gg= {}
    for i in data:
       try:
@@ -37,7 +27,7 @@ def readpasswd(directory,_file):
 #############################################################################################
 #   read information from configuration file
 #######################################################################################
-readpass = readpasswd(workdirectory,configfile)
+readpass = readpasswd(configfile)
 proposal = readpass['proposal']
 users = readpass['users']
 triggerpass = readpass['triggerpass']
@@ -75,9 +65,7 @@ def ReadAscii2(ascifile):
    return vec1,vec2
 #########################################################################
 def readlist(listfile):
-#    from lsc.util import correctcard
     import string,os,sys,re,glob
-    from astropy.io import fits
     if '*' in listfile:
         imglist=glob.glob(listfile)
     elif ',' in listfile: imglist = string.split(listfile,sep=',')
@@ -101,11 +89,6 @@ def readlist(listfile):
                     except Exception as e:
                         print 'problem reading header of', ff
                         print e
-#                       try:
-#                          correctcard(ff)
-#                          hdulist= fits.open(ff)
-#                          imglist.append(ff)
-#                       except:                          pass
            except:              sys.exit('\n##### Error ###\n file '+str(listfile)+' do not  exist\n')
     if len(imglist)==0:
            sys.exit('\n##### Error ###\nIf "'+str(listfile)\
@@ -131,28 +114,31 @@ def delete(listfile):
         for _file in lista:
             try:          os.system('rm '+_file)
             except:       pass
+
+def imcopy(imgin, imgout, center=None, cutout_size=None, ext=0):
+    '''iraf.imcopy equivalent
+       center = (x, y) of center of cutout
+       cutout_size = (dy, dx) or single value for square
+       By default, the entire 0th extension is copied.'''
+    hdulist = fits.open(imgin)
+    data = hdulist[ext].data
+    hdr = hdulist[ext].header
+    if center is not None and cutout_size is not None:
+        cutout = Cutout2D(data, center, cutout_size, WCS(hdr))
+        data = cutout.data
+        hdr['CRPIX1'] = cutout.wcs.wcs.crpix[0]
+        hdr['CRPIX2'] = cutout.wcs.wcs.crpix[1]
+    fits.writeto(imgout, data, hdr)
+    hdulist.close()
+
 ###############################################################
 def readhdr(img):
-    from astropy.io.fits import getheader
     try:
-        hdr = getheader(img)
+        hdr = fits.getheader(img)
     except Exception as e:
         print "Couldn't read header of {}. Try deleting it and starting over.".format(img)
         raise e
     return hdr
-
-#def readhdr(img):
-#   from astropy.io.fits import open as popen
-#   try:    hdr=popen(img)[0].header
-#   except:
-#      from lsc.util import correctcard
-#      try: 
-#         correctcard(img)
-#      except: 
-#         import sys
-#         sys.exit('image '+str(img)+' is corrupted, delete it and start again')
-#      hdr=popen(img)[0].header
-#   return hdr
 
 def readkey3(hdr,keyword):
     from astropy.coordinates import Angle
@@ -320,75 +306,8 @@ def writeinthelog(text,logfile):
     f=open(logfile,'a')
     f.write(text)
     f.close()
-################################################
-# THESE NO LONGER WORK WITH PYFITS 3.4
-#def correctcard(img):
-#    from  fits import open as popen
-#    from numpy  import asarray
-#    import re
-#    hdulist=popen(img)
-#    a=hdulist[0]._verify('fix')    
-#    _header=hdulist[0].header
-#    for i in range(len(a)):
-#        if not a[i]:
-#            a[i]=['']
-#    ww=asarray([i for i in range(len(a)) if (re.sub(' ','',a[i][0])!='')])
-#    if len(ww)>0:
-#        newheader=[]
-#        headername=[]
-#        for j in _header.items():
-#            headername.append(j[0])
-#            newheader.append(j[1])
-#        hdulist.close()
-#        imm=popen(img,mode='update')
-#        _header=imm[0].header
-#        for i in ww:
-#            if headername[i]:
-#                try:
-##                    _header[headername[i]] = newheader[i]
-#                    _header.update(headername[i],newheader[i]) # deprecated in PyFITS 3.3
-#                except:
-##                    _header[headername[i]] = 'xxxx'
-#                    _header.update(headername[i],'xxxx') # deprecated in PyFITS 3.3
-#        imm.flush()
-#        imm.close()
-######################################################################################################
-#def updateheader(image,dimension,headerdict):
-#    from astropy.io.fits import open as opp
-#    try:
-#        imm=opp(image,mode='update')
-#        _header=imm[dimension].header
-#################################
-##   change way to update to speed up the process
-##   now get dictionary   08 12  2012
-#################################
-#        for i in headerdict.keys():
-##           _header[i] = tuple(headerdict[i])
-#           _header.update(i,headerdict[i][0],headerdict[i][1]) # deprecated in PyFITS 3.3
-####################################################
-#        imm.flush()
-#        imm.close()
-#    except:
-#        import lsc
-#        from lsc.util import correctcard
-#        print 'warning: problem to update header, try to correct header format ....'
-#        correctcard(image)
-#        try:
-#            imm=opp(image,mode='update')
-#            _header=imm[dimension].header
-####################################################
-#            for i in headerdict.keys():
-##               _header[i] = tuple(headerdict[i])
-#               _header.update(i,headerdict[i][0],headerdict[i][1]) # deprecated in PyFITS 3.3
-####################################################
-#            imm.flush()
-#            imm.close()
-#        except:
-#           print 'niente'
-##           import sys
-##            sys.exit('error: not possible update header')
+
 def updateheader(filename, dimension, headerdict):
-    from astropy.io import fits
     tupledict = {key: tuple(value) for key, value in headerdict.items()}
     try:
         hdulist = fits.open(filename, mode='update')
@@ -489,7 +408,6 @@ def readstandard(standardfile):
 #################################################################################################
 def readspectrum(img):
     from numpy import array
-    from astropy.io import fits
     import string
     fl=''
     lam=''
@@ -653,7 +571,6 @@ def correctobject(img,coordinatefile):
     scal=pi/180.
     std,rastd,decstd,magstd=readstandard(coordinatefile)
     img=re.sub('\n','',img)
-#    correctcard(img)
     hdr=readhdr(img)
     _ra=readkey3(hdr,'RA')
     _dec=readkey3(hdr,'DEC')
@@ -707,7 +624,6 @@ def limmag(img):
 ##########################################################################
 def marksn2(img,fitstab,frame=1,fitstab2='',verbose=False):
    from pyraf import iraf
-   from astropy.io import fits
    from numpy import array   #,log10
    import lsc
    iraf.noao(_doprint=0)
@@ -762,7 +678,6 @@ def marksn2(img,fitstab,frame=1,fitstab2='',verbose=False):
 def Docosmic(img,_sigclip=5.5,_sigfrac=0.2,_objlim=4.5):
    import time
    start=time.time()
-   from astropy.io import fits
    import lsc
    import re,os,string
    import numpy as np
@@ -1218,25 +1133,28 @@ def getstatus(username,passwd,tracking_id):
 
 ####################################################################################################
 
-def getcatalog(_name,_field):
-    import lsc
-    import glob
-    import string
-    _catalog=''
-    data = lsc.mysqldef.query(['select distinct(targetid) from targetnames where name="' + str(_name) + '"'], lsc.conn)
-    if len(data) == 1:
-        _targetid = data[0]['targetid']
-        data = lsc.mysqldef.query(['select name from targetnames where targetid="' + str(_targetid) + '"'],lsc.conn)
+def getcatalog(name_or_filename, field):
+    catalog = ''
+    catalog_path = lsc.__path__[0] + '/standard/cat/' + field + '/'
+    # get the targetid from the object name or filename
+    if name_or_filename[-5:] == '.fits':
+        targetid = lsc.mysqldef.targimg(name_or_filename)
+    else:
+        targetid = lsc.mysqldef.gettargetid(name_or_filename)
+    # get the catalog from the database
+    cats = lsc.mysqldef.query(["select sloan_cat, landolt_cat, apass_cat from targets where id=" + str(targetid)], lsc.conn)
+    if cats:
+        if field + '_cat' in cats[0] and cats[0][field + '_cat']:
+            catalog = catalog_path + cats[0][field + '_cat']
+    # if not in database, search for the catalog in the directory
+    if not catalog:
+        data = lsc.mysqldef.query(['select name from targetnames where targetid=' + str(targetid)], lsc.conn)
         for targ in data:
-            #print lsc.__path__[0] + '/standard/cat/' + _field + '/' + targ['name'].replace(' ','') + '*'
-            catlist = glob.glob(lsc.__path__[0] + '/standard/cat/' + _field + '/*')
-            catlist2 = [string.split(string.split(i,'/')[-1],'_'+_field)[0].lower() for i in catlist ]
-            if targ['name'].replace(' ','').lower() in catlist2:
-               _catalog = catlist[catlist2.index(targ['name'].replace(' ','').lower())]            
-            #catlist = glob.glob(lsc.__path__[0] + '/standard/cat/' + _field + '/' + targ['name'].replace(' ','')+ '*')
-            #if len(catlist) >= 1:
-            #    _catalog = catlist[0]
-            #    break
-    return _catalog
+            catlist = os.listdir(catalog_path)
+            targetnames = [os.path.split(cat)[1].split('_' + field)[0].lower() for cat in catlist]
+            targetname = targ['name'].replace(' ', '').lower()
+            if targetname in targetnames:
+               catalog = catlist[targetnames.index(targetname)]
+    return catalog
 
 ######################################################################################################
