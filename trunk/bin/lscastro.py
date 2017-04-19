@@ -13,14 +13,6 @@ import numpy as np
 description = "> Fast astrometry of lsc and sofi images "
 usage = "%prog  listfile"
 
-
-def xpa(arg):
-    import subprocess
-
-    subproc = subprocess.Popen('xpaset -p ds9 ' + arg, shell=True)
-    subproc.communicate()
-
-
 if __name__ == "__main__":
     parser = OptionParser(usage=usage, description=description)
     parser.add_option("-f", "--fit", dest="fitgeo", default='rxyscale', type="str",
@@ -63,14 +55,8 @@ if __name__ == "__main__":
     _start = time.time()
     imglist = lsc.util.readlist(args[0])
     _interactive = option.interactive
-    if not _interactive:
-        _interactive = False
     _redo = option.redo
-    if not _redo:
-        _redo = False
     _zeropoint = option.zeropoint
-    if not _zeropoint:
-        _zeropoint = False
     _fitgeo = option.fitgeo
     _system = option.system
     _catalogue = option.catalogue
@@ -90,14 +76,7 @@ if __name__ == "__main__":
         hdr = lsc.readhdr(img)
         _wcserr = lsc.readkey3(hdr, 'wcserr')
         _astromet = lsc.readkey3(hdr, 'ASTROMET')
-        done = 0
-        if float(_wcserr) == 0: done = 1
-        if done == 0:
-            if _astromet:
-                if float(string.split(_astromet)[0]) < 2 and float(string.split(_astromet)[1]) < 2:
-                    done = 1
-
-        if done == 1 and _redo == False:
+        if not int(_wcserr) and _redo == False:
             print '\n#####  astrometry already done'
         else:
             _instrume = lsc.readkey3(hdr, 'instrume')
@@ -133,7 +112,6 @@ if __name__ == "__main__":
                 print e
                 rmsx3, rmsy3, num3, fwhmgess, ellgess, ccc, rasys3, decsys3, mbkg3 = '', '', '', '', '', '', '', '', ''
                 print '\n### problem with astrometry, lsc.lscastrodef.lscastroloop crashed  '
-            print img
             if fwhmgess and fwhmgess < 99:
                 print '\n### check astrometry: fine \n### rmsx rmsy nstars: ' + astrostring
                 lsc.util.updateheader(img, 0, {'PSF_FWHM': [fwhmgess, 'FHWM (arcsec) - computed with sectractor'],
@@ -147,48 +125,37 @@ if __name__ == "__main__":
                 if _zeropoint:
                     try:
                         result = lsc.lscastrodef.zeropoint(img, _system, False)
-                    except:
-                        result = ''
-                else:
-                    print '\n###skip zeropoint'
-                    result = ''
-                if result:
-                    if os.path.isfile(re.sub('.fits', '.ph', img)):
-                        print '\n### zeropoint ..... done'
-                        for ll in result:
-                            valore = '%3.3s %6.6s %6.6s' % (str(ll), str(result[ll][1]), str(result[ll][0]))
-                            print '### ', valore
-                            lsc.util.updateheader(img, 0, {'zp' + ll: [str(valore), '']})
+                        if os.path.isfile(re.sub('.fits', '.ph', img)):
+                            print '\n### zeropoint ..... done'
+                            for ll in result:
+                                valore = '%3.3s %6.6s %6.6s' % (str(ll), str(result[ll][1]), str(result[ll][0]))
+                                print '### ', valore
+                                lsc.util.updateheader(img, 0, {'zp' + ll: [str(valore), '']})
+                    except Exception as e:
+                        print e
+                        print 'zero point calculation failed'
+
         hdr = lsc.readhdr(img)
         _astromet = lsc.readkey3(hdr, 'ASTROMET')
-        try:
-            _WCSERR = lsc.readkey3(hdr, 'wcserr')
-            print _WCSERR
-            print _astromet
-            if _astromet:
-                if float(string.split(_astromet)[0]) < 2 and float(string.split(_astromet)[1]) < 2:
-                    WCSERR = 0
-                else:
-                    WCSERR = 99
-            else:
-                WCSERR = 99
-            print WCSERR
-            if WCSERR == 0:
-                if 'WCS_ERR' in hdr and 'WCSERR' not in hdr:
-                    lsc.util.updateheader(img, 0, {'WCS_ERR': [0, '']})
-                else:
-                    lsc.util.updateheader(img, 0, {'WCSERR': [0, '']})
-                lsc.mysqldef.updatevalue('photlco', 'WCS', 0, string.split(img, '/')[-1])
-                lsc.util.updateheader(img, 0, {'L1FWHM': [fwhmgess, 'FHWM (arcsec) - computed with sectractor']})
-            else:
-                print 'set bad quality'
-                lsc.mysqldef.updatevalue('photlco', 'quality', 1, string.split(img, '/')[-1])
-            lsc.mysqldef.updatevalue('photlco', 'psf', 'X', string.split(img, '/')[-1] + '.fits')
-            lsc.mysqldef.updatevalue('photlco', 'psfmag', 9999, string.split(img, '/')[-1] + '.fits')
-            lsc.mysqldef.updatevalue('photlco', 'apmag', 9999, string.split(img, '/')[-1] + '.fits')
-            lsc.mysqldef.updatevalue('photlco', 'mag', 9999, string.split(img, '/')[-1] + '.fits')
-        except:
-            pass
+        if _astromet and float(_astromet.split()[0]) < 99. and float(_astromet.split()[1]) < 99.:
+            WCSERR = 0
+        else:
+            WCSERR = 9999
+        if 'WCS_ERR' in hdr and 'WCSERR' not in hdr:
+            lsc.util.updateheader(img, 0, {'WCS_ERR': [WCSERR, '']})
+        else:
+            lsc.util.updateheader(img, 0, {'WCSERR': [WCSERR, '']})
+        lsc.mysqldef.updatevalue('photlco', 'WCS', WCSERR, img.split('/')[-1])
+        lsc.util.updateheader(img, 0, {'L1FWHM': [fwhmgess, 'FHWM (arcsec) - computed with sectractor']})
+        lsc.mysqldef.updatevalue('photlco', 'psf', 'X', string.split(img, '/')[-1] + '.fits')
+        lsc.mysqldef.updatevalue('photlco', 'psfmag', 9999, string.split(img, '/')[-1] + '.fits')
+        lsc.mysqldef.updatevalue('photlco', 'apmag', 9999, string.split(img, '/')[-1] + '.fits')
+        lsc.mysqldef.updatevalue('photlco', 'mag', 9999, string.split(img, '/')[-1] + '.fits')
+        if WCSERR == 9999 or float(_astromet.split()[0]) > 2. or float(_astromet.split()[1]) > 2.:
+            if WCSERR != 9999:
+                print 'RMS too high'
+            print 'setting to bad quality'
+            lsc.mysqldef.updatevalue('photlco', 'quality', 1, img.split('/')[-1])
     _stop = time.time()
     print '\n###time to run ' + str((_stop - _start) / 60.)
 #################################################################################

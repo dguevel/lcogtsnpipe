@@ -202,7 +202,7 @@ def psffit(img, fwhm, psfstars, hdr, interactive, _datamax=45000, psffun='gauss'
     iraf.daopars.recenter = 'yes'
     iraf.daopars.varorder = varord
 
-    if interactive:
+    if interactive: # not possible to run pstselect or psf interactively on 64-bit linux (Error 851)
         shutil.copyfile('_psf.mag', '_psf.pst')
         print '_' * 80
         print '>>> Mark good stars with "a" or "d"-elete. Then "f"-it,' + \
@@ -222,7 +222,7 @@ def psffit(img, fwhm, psfstars, hdr, interactive, _datamax=45000, psffun='gauss'
     return photmag, pst, fitmag
 
 
-def ecpsf(img, ofwhm, threshold, psfstars, distance, interactive, ds9, psffun='gauss', fixaperture=False, _catalog='', _datamax=None, show=False):
+def ecpsf(img, ofwhm, threshold, psfstars, distance, interactive, psffun='gauss', fixaperture=False, _catalog='', _datamax=None, show=False):
     try:
         import lsc, string
 
@@ -406,7 +406,7 @@ def ecpsf(img, ofwhm, threshold, psfstars, distance, interactive, ds9, psffun='g
                                Stdout=1, image=img + '[0]', inwcs='logical', outwcs='world', columns="1 2",
                                format='%13.3H %12.2h', min_sig=9, mode='h')[3:]
 
-        if ds9 == 0 and (interactive or show):
+        if interactive or show:
             iraf.set(stdimage='imt1024')
             iraf.display(img + '[0]', 1, fill=True, Stdout=1)
             iraf.tvmark(1, coords='STDIN', mark='circle', radii=15, label=True, Stdin=photmag, nxoffset=5, nyoffset=5, txsize=2)
@@ -571,16 +571,10 @@ if __name__ == "__main__":
         if os.path.exists(img + '.sn2.fits') and not option.redo:
             print img + ': psf already calculated'
         else:
-            ds9 = os.system("ps -U" + str(os.getuid()) + "|grep -v grep | grep ds9")
-            if option.interactive and ds9 != 0:
-                pid = subprocess.Popen(['ds9']).pid
-                time.sleep(2)
-                ds9 = 0
-
             fwhm0 = option.fwhm
             while True:
                 result, fwhm = ecpsf(img, fwhm0, option.threshold, option.psfstars,
-                                     option.distance, option.interactive, ds9, psffun,
+                                     option.distance, option.interactive, psffun,
                                      fixaperture, _catalog, option.datamax, option.show)
                 print '\n### ' + str(result)
                 if option.show:

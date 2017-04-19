@@ -8,7 +8,6 @@ import lsc
 workdirectory = os.getenv('LCOSNDIR')
 if workdirectory is None:
     workdirectory = '/supernova/'
-
 configfile = os.path.join(workdirectory, 'configure')
 
 def readpasswd(configfile):
@@ -211,8 +210,8 @@ def readkey3(hdr,keyword):
                          'DEC'       : 'DEC',\
                          'CAT-RA'    : 'CAT-RA',\
                          'CAT-DEC'   : 'CAT-DEC',\
-                         'datamin'   : -100,\
-                         'datamax'   : 60000,\
+                         'datamin'   : -100.0,\
+                         'datamax'   : 60000.0,\
                          'wcserr'    : 'WCS_ERR',\
                          'observer'  : 'OBSERVER',\
                          'exptime'   : 'EXPTIME',\
@@ -256,8 +255,8 @@ def readkey3(hdr,keyword):
        useful_keys = {'object'    : 'OBJECT',\
                       'RA'        : 'RA',\
                       'DEC'       : 'DEC',\
-                      'CAT-RA'    : 'CAT-RA',\
-                      'CAT-DEC'   : 'CAT-DEC',\
+                      'CAT-RA'    : 'RA',\
+                      'CAT-DEC'   : 'DEC',\
                       'ron'       : 'RDNOISE',\
                       'date-obs'  : 'DATE-OBS',\
                       'date-night': 'DAY-OBS',\
@@ -282,13 +281,11 @@ def readkey3(hdr,keyword):
           elif keyword=='JD':       
              value=value+0.5
           elif keyword=='instrume':      value=value.lower()
-          elif keyword=='filter':      
-             value1=hdr.get('FILTER2')
-             value2=hdr.get('FILTER1')
-             value3=hdr.get('FILTER3')
-             values=[a for a in [value,value1,value2,value3] if 'air' not in a]
-             if not values: value='air'
-             else: value=values[0]
+          elif keyword=='filter' and value in [None, 'air']:
+             for key in ['FILTER2', 'FILTER1', 'FILTER3']:
+                if hdr.get(key) not in [None, 'air']:
+                   value = hdr[key]
+                   break
           elif keyword in ['RA', 'CAT-RA'] and type(value) == str and ':' in value:
              value = Angle(value, u.hourangle).deg
           elif keyword in ['RA', 'CAT-RA', 'DEC', 'CAT-DEC']:
@@ -299,6 +296,10 @@ def readkey3(hdr,keyword):
        value=''
     if type(value) == str:
        value = value.replace('\#', '')
+    if value == 'ftn':
+      value = '2m0-01'
+    elif value == 'fts':
+      value = '2m0-02'
     return value
 
 #######################################################
@@ -321,7 +322,7 @@ def updateheader(filename, dimension, headerdict):
 def display_image(img,frame,_z1,_z2,scale,_xcen=0.5,_ycen=0.5,_xsize=1,_ysize=1,_erase='yes'):
     goon='True'
     import glob, subprocess, os, time
-    ds9 = subprocess.Popen("ps -U"+str(os.getuid())+"|grep -v grep | grep ds9",shell=True,stdout=subprocess.PIPE).stdout.readlines()
+    ds9 = subprocess.Popen("ps -U {:d} u | grep -v grep | grep ds9".format(os.getuid()),shell=True,stdout=subprocess.PIPE).stdout.readlines()
     if len(ds9)== 0 :   
        subproc = subprocess.Popen('ds9',shell=True)
        time.sleep(3)
@@ -696,8 +697,12 @@ def Docosmic(img,_sigclip=5.5,_sigfrac=0.2,_objlim=4.5):
       temp_file0 = next(tempfile._get_candidate_names())
       lsc.delete(temp_file0)
       out_fits = fits.PrimaryHDU(header=hd,data=ar)
-      out_fits.scale('float32',bzero=0,bscale=1)
-      out_fits.writeto(temp_file0, clobber=True, output_verify='fix')
+      try:
+         out_fits.scale('float32',bzero=0,bscale=1)
+      except TypeError as e:
+         print "FITS rescaling failed (but it probably doesn't matter). See Astropy Issue #5955."
+         print e
+      out_fits.writeto(temp_file0, overwrite=True, output_verify='fix')
       ar = fits.getdata(temp_file0)
       lsc.delete(temp_file0)
       gain    = hd['GAIN']
@@ -747,17 +752,17 @@ def Docosmic(img,_sigclip=5.5,_sigfrac=0.2,_objlim=4.5):
    out3=c.getsatstars()
 
    out_fits = fits.PrimaryHDU(header=hd,data=out1)
-   out_fits.writeto(out, clobber=True, output_verify='fix')
+   out_fits.writeto(out, overwrite=True, output_verify='fix')
 
    # we are going to register the mask for the template image,
    # so it makes sense to save it as a float instead of an int
    if 'temp' in img: pixtype = 'float32'
    else:             pixtype = 'uint8'
    out_fits = fits.PrimaryHDU(header=hd,data=(out2!=0).astype(pixtype))
-   out_fits.writeto(outmask, clobber=True, output_verify='fix')
+   out_fits.writeto(outmask, overwrite=True, output_verify='fix')
 
    out_fits = fits.PrimaryHDU(header=hd,data=(out3!=0).astype('uint8'))
-   out_fits.writeto(outsat, clobber=True, output_verify='fix')
+   out_fits.writeto(outsat, overwrite=True, output_verify='fix')
 
    print 'time to do cosmic ray rejection:', time.time()-start
    return out,outmask,outsat
@@ -1140,7 +1145,7 @@ def getcatalog(name_or_filename, field):
     if name_or_filename[-5:] == '.fits':
         targetid = lsc.mysqldef.targimg(name_or_filename)
     else:
-        targetid = lsc.mysqldef.gettargetid(name_or_filename)
+        targetid = lsc.mysqldef.gettargetid(name_or_filename, '', '', lsc.conn)
     # get the catalog from the database
     cats = lsc.mysqldef.query(["select sloan_cat, landolt_cat, apass_cat from targets where id=" + str(targetid)], lsc.conn)
     if cats:

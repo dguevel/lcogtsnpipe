@@ -154,12 +154,12 @@ def run_getmag(imglist, _output='', _interactive=False, _show=False, _bin=1e-10,
                 line0 += '%12s%12s ' % (str(filt), str(filt) + 'err')
         for _fil in setup[_tel]:
             for j in range(0, len(setup[_tel][_fil]['mjd'])):
-                line = '  %10s %12.12s ' % (str(setup[_tel][_fil]['date'][j]), str(setup[_tel][_fil]['jd'][j]))
+                line = '  %10s %12.4f ' % (str(setup[_tel][_fil]['date'][j]), setup[_tel][_fil]['jd'][j])
                 for filt in filters:
                     if filt == _fil:
-                        line += '%12.7s %12.6s ' % (str(setup[_tel][_fil]['mag'][j]), str(setup[_tel][_fil]['dmag'][j]))
+                        line += '%12.4f %12.4f ' % (setup[_tel][_fil]['mag'][j], setup[_tel][_fil]['dmag'][j])
                     else:
-                        line += '%12.7s %12.6s ' % ('9999', '0.0')
+                        line += '%12s %12s ' % ('9999', '0.0')
                 line += '%6s %2s\n' % (_tel, _fil)
                 linetot[setup[_tel][_fil]['mjd'][j]] = line
     aaa = linetot.keys()
@@ -598,7 +598,7 @@ def checkstage(img, stage, database='photlco'):
         else:
             status = 2
     elif stage == 'checkmag' and status >= 0 and ggg[0]['psf'] != 'X' and ggg[0]['wcs'] == 0:
-        if ggg[0]['psfmag'] == 9999 or ggg[0]['psfmag'] == 9999:
+        if ggg[0]['psfmag'] == 9999:
             status = 1
         else:
             status = 2
@@ -1076,6 +1076,7 @@ def checkwcs(imglist, force=True, database='photlco', _z1='', _z2=''):
 
     iraf.digiphot(_doprint=0)
     iraf.daophot(_doprint=0)
+    iraf.set(stdimage='imt1024')
     print force
     print _z1, _z2
     for img in imglist:
@@ -1330,6 +1331,7 @@ def checkdiff(imglist, database='photlco'):
     from pyraf import iraf
     iraf.digiphot(_doprint=0)
     iraf.daophot(_doprint=0)
+    iraf.set(stdimage='imt1024')
     for img in imglist:
         status = checkstage(img, 'wcs')
         if status >= 0:
@@ -1367,41 +1369,48 @@ def checkdiff(imglist, database='photlco'):
         else:
             print 'status ' + str(status) + ': unknown status'
 
-def checkmag(imglist, database='photlco'):
-    import lsc
-    import os, string  #MySQLdb,
-    #     import  mysqldef #import updatevalue
-    direc = lsc.__path__[0]
-    from pyraf import iraf
+def display_psf_fit(img, datamax=None):
+    if datamax is None:
+        datamax = 51000
+    ggg = lsc.mysqldef.getfromdataraw(conn, 'photlco', 'filename', img, '*')
+    ogfile = ggg[0]['filepath'] + img.replace('.fits', '.og.fits')
+    rsfile = ggg[0]['filepath'] + img.replace('.fits', '.rs.fits')
+    if os.path.isfile(ogfile) and os.path.isfile(rsfile):
+        ogdata = fits.getdata(ogfile)
+        rsdata = fits.getdata(rsfile)
+        plt.clf()
+        axL = plt.subplot(1, 2, 1, adjustable='box-forced')
+        axR = plt.subplot(1, 2, 2, sharex=axL, sharey=axL, adjustable='box-forced')
+        vmin = np.percentile(ogdata, 5)
+        vmax = np.percentile(ogdata, 95)
+        im = axL.imshow(ogdata, vmin=vmin, vmax=vmax)
+        axR.imshow(rsdata, vmin=vmin, vmax=vmax)
+        j_sat, i_sat = np.where(ogdata > datamax)
+        if len(i_sat):
+            axL.plot(i_sat, j_sat, 'rx', label='{:d} pixels > {:.0f} ADU'.format(len(i_sat), datamax))
+            axL.legend()
+        plt.colorbar(im, ax=[axL, axR], orientation='horizontal')
+        plt.gcf().text(0.5, 0.99, '{filename}\nfilter = {filter}\nexptime = {exptime:.0f} s\npsfmag = {psfmag:.2f} mag'.format(**ggg[0]), va='top', ha='center')
+    return ogfile, rsfile
 
-    iraf.digiphot(_doprint=0)
-    iraf.daophot(_doprint=0)
+def checkmag(imglist, datamax):
+    plt.ion()
     for img in imglist:
         status = checkstage(img, 'checkmag')
-        if status >= 1:
-            ggg = lsc.mysqldef.getfromdataraw(conn, database, 'filename', str(img), '*')
-            _dir = ggg[0]['filepath']
-            if os.path.isfile(_dir + re.sub('.fits', '.og.fits', img)) and os.path.isfile(
-                            _dir + re.sub('.fits', '.rs.fits', img)):
-                aaa = iraf.display(_dir + re.sub('.fits', '.og.fits', img), 1, fill=True, Stdout=1)
-                print aaa
-                iraf.display(_dir + re.sub('.fits', '.rs.fits', img), 2, fill=True, Stdout=1)
-                aa = raw_input('>>>good mag [[y]/n] or [b] bad quality ? ')
-                if not aa:
-                    aa = 'y'
-                if aa in ['n', 'N', 'No', 'NO', 'bad', 'b', 'B']:
-                    print 'updatestatus bad'
-                    lsc.mysqldef.updatevalue(database, 'psfmag', 9999, string.split(img, '/')[-1])
-                    lsc.mysqldef.updatevalue(database, 'mag', 9999, string.split(img, '/')[-1])
-                    if os.path.isfile(_dir + re.sub('.fits', '.og.fits', img)):
-                        print 'rm ' + _dir + re.sub('.fits', '.og.fits', img)
-                        os.system('rm ' + _dir + re.sub('.fits', '.og.fits', img))
-                    if os.path.isfile(_dir + re.sub('.fits', '.rs.fits', img)):
-                        print 'rm ' + _dir + re.sub('.fits', '.rs.fits', img)
-                        os.system('rm ' + _dir + re.sub('.fits', '.rs.fits', img))
-                if aa in ['bad', 'b', 'B']:
-                    print 'updatestatus bad quality'
-                    lsc.mysqldef.updatevalue(database, 'quality', 1, string.split(img, '/')[-1])
+        if status > 1:
+            ogfile, rsfile = display_psf_fit(img, datamax)
+            aa = raw_input('>>>good mag [[y]/n] or [b] bad quality ? ')
+            if aa in ['n', 'N', 'No', 'NO', 'bad', 'b', 'B']:
+                print 'update status: bad psfmag & mag'
+                lsc.mysqldef.updatevalue('photlco', 'psfmag', 9999, img)
+                lsc.mysqldef.updatevalue('photlco', 'mag', 9999, img)
+                os.system('rm -v ' + ogfile)
+                os.system('rm -v ' + rsfile)
+            if aa in ['bad', 'b', 'B']:
+                print 'update status: bad quality'
+                lsc.mysqldef.updatevalue('photlco', 'quality', 1, img)
+        elif status == 1:
+            print 'status ' + str(status) + ': psfmag stage not done'
         elif status == 0:
             print 'status ' + str(status) + ': WCS stage not done'
         elif status == -1:
@@ -1443,6 +1452,7 @@ def checkquality(imglist, database='photlco'):
 
     iraf.digiphot(_doprint=0)
     iraf.daophot(_doprint=0)
+    iraf.set(stdimage='imt1024')
     for img in imglist:
         status = checkstage(img, 'checkquality')
         if status == -4:
@@ -1632,6 +1642,7 @@ def plotfast2(setup):
             shifts += [_shift[_filter]] * len(setup[_telescope][_filter]['mag'])
 
     def plot_hook():
+        plt.figure(1)
         plt.gca().invert_yaxis()
         plt.xlabel('MJD')
         plt.ylabel('Magnitude')
@@ -1647,13 +1658,8 @@ def plotfast2(setup):
         print 'mjd = {:.2f}\tmag = {:.2f} ({:+d} shift on plot)'.format(mjds[i], mags[i], shifts[i])
         dbrow = mysqldef.getvaluefromarchive('photlco', 'filename', filenames[i], 'filepath, mjd, mag')[0]
         print 'mjd = {:.2f}\tmag = {:.2f} (from database)'.format(dbrow['mjd'], dbrow['mag'])
-        og_file = dbrow['filepath'] + filenames[i].replace('.fits', '.og.fits')
-        rs_file = dbrow['filepath'] + filenames[i].replace('.fits', '.rs.fits')
-        if os.path.isfile(og_file) and os.path.isfile(rs_file):
-            iraf.digiphot(_doprint=0)
-            iraf.daophot(_doprint=0)
-            iraf.display(og_file, 1, fill=True, Stdout=1)
-            iraf.display(rs_file, 2, fill=True, Stdout=1)
+        plt.figure(2)
+        display_psf_fit(filenames[i])
 
     def delete_hook(i):
         lsc.mysqldef.updatevalue('photlco', 'mag', 9999, filenames[i])
@@ -1750,8 +1756,7 @@ def plotfast(setup, output='', database='photlco'):  #,band,color,fissa=''):
         raw_input('press d to mark. Return to exit ...\n')
         plt.close()
     else:
-        plt.savefig(output + '.png', format='png')
-        os.system('chmod 777 ' + output + '.png')
+        plt.savefig(output.replace('.txt', '.png'), format='png')
 
 
 ################################################################
@@ -2132,7 +2137,7 @@ def run_cosmic(imglist, database='photlco', _sigclip=4.5, _sigfrac=0.2, _objlim=
                     os.system('cp '+_dir + img+' '+_dir + re.sub('.fits', '.clean.fits',img))
                     ar, hd = fits.getdata(_dir + img, header=True)
                     out_fits = fits.PrimaryHDU(header=hd,data=(ar-ar).astype('uint8'))
-                    out_fits.writeto(re.sub('.fits', '.mask.fits', _dir + img), clobber=True, output_verify='fix')
+                    out_fits.writeto(re.sub('.fits', '.mask.fits', _dir + img), overwrite=True, output_verify='fix')
                 else:
                     if not os.path.isfile(_dir + img.replace('.fits', '.clean.fits')) or not os.path.isfile(_dir + img.replace('.fits', '.mask.fits')) or _force:
                         output, mask, satu = lsc.util.Docosmic(_dir + img, _sigclip, _sigfrac, _objlim)

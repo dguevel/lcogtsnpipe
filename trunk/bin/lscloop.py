@@ -165,19 +165,18 @@ if __name__ == "__main__":   # main program
     if _normalize not in ['i', 't']:
         sys.argv.append('--help')
     if _stage:
-        if _stage in ['checkwcs', 'checkpsf', 'checkmag', 'checkquality', 'checkpos', 'checkcat',
-                      'checkmissing', 'checkfvd', 'checkcosmic', 'checkdiff']:
-            newargs = ['lsccheck.py']+['"'+arg+'"' if ' ' in arg else arg for arg in sys.argv[1:]] # in case you had quotes
-            newcommand = ' '.join(newargs)
-            os.system(newcommand) # redo this command with lsccheck.py instead of lscloop.py
-            sys.exit()
-        elif _stage not in ['wcs', 'psf', 'psfmag', 'zcat', 'abscat', 'mag', 'local', 'getmag', 'merge', 'diff',
-                            'template', 'makestamp', 'apmag', 'cosmic', 'ingestsloan', 'ingestps1']:
+        if _stage not in ['wcs', 'psf', 'psfmag', 'zcat', 'abscat', 'mag', 'local', 'getmag', 'merge', 'diff',
+                            'template', 'makestamp', 'apmag', 'cosmic', 'ingestsloan', 'ingestps1',
+                            'checkwcs', 'checkpsf', 'checkmag', 'checkquality', 'checkpos', 'checkcat',
+                            'checkmissing', 'checkfvd', 'checkcosmic', 'checkdiff']:
             sys.argv.append('--help')
+        if _stage == 'checkdiff':
+            _filetype = 3
     if _bad:
         if _bad not in ['wcs', 'psf', 'psfmag', 'zcat', 'abscat', 'mag', 'goodcat', 'quality', 'cosmic', 'diff']:
             sys.argv.append('--help')
-        if _bad=='diff' and _filetype!=1: sys.exit('can only check for -b diff on original images (--filetype 1)')
+        if _bad=='diff':
+            _filetype = 1
     if _mode not in ['sv','astrometry']:
             sys.argv.append('--help')
     option, args = parser.parse_args()
@@ -270,7 +269,8 @@ if __name__ == "__main__":   # main program
         listepoch = [re.sub('-', '', str(i)) for i in [start + datetime.timedelta(days=x)
                                                        for x in range(0, 1 + (stop - start).days)]]
 
-    if not _stage or _stage in ['local', 'getmag', 'wcs', 'psf', 'psfmag', 'makestamp', 'cosmic', 'apmag','ingestsloan', 'ingestps1']:
+    if not _stage or _stage in ['local', 'getmag', 'wcs', 'psf', 'psfmag', 'makestamp', 'cosmic', 'apmag', 'ingestsloan', 'ingestps1',
+            'checkwcs', 'checkpsf', 'checkmag', 'checkquality', 'checkpos', 'checkcat', 'checkmissing', 'checkfvd', 'checkcosmic', 'checkdiff']:
         if len(listepoch) == 1:
             lista = lsc.mysqldef.getlistfromraw(lsc.myloopdef.conn, 'photlco', 'dayobs', str(listepoch[0]), '', '*',
                                                 _telescope)
@@ -326,15 +326,15 @@ if __name__ == "__main__":   # main program
             elif _stage == 'apmag':
                 lsc.myloopdef.run_apmag(ll['filename'], 'photlco')
             elif _stage == 'cosmic':
-#############   SV 20161129 add multicore 
                 listfile = [k + v for k, v in zip(ll['filepath'], ll['filename'])]
-                p = Pool(_multicore)
-                inp = [([i], 'photlco', 4.5, 0.2, 4,_redo) for i in listfile]
-                p.map(multi_run_cosmic, inp)
-                p.close()
-                p.join()
-#                lsc.myloopdef.run_cosmic(ll['filename'], 'photlco', 4.5, 0.2, 4, _redo)
-
+                if _multicore > 1:
+                    p = Pool(_multicore)
+                    inp = [([i], 'photlco', 4.5, 0.2, 4,_redo) for i in listfile]
+                    p.map(multi_run_cosmic, inp)
+                    p.close()
+                    p.join()
+                else:
+                    lsc.myloopdef.run_cosmic(listfile, 'photlco', 4.5, 0.2, 4, _redo)
             elif _stage == 'ingestsloan':
                 listfile = [k + v for k, v in zip(ll['filepath'], ll['filename'])]
                 lsc.myloopdef.run_ingestsloan(listfile, 'sloan', show=_show, force=_redo)
@@ -343,6 +343,28 @@ if __name__ == "__main__":   # main program
                 #    sys.exit('ERROR: list of PS1 frames not provided ')
                 listfile = [k + v for k, v in zip(ll['filepath'], ll['filename'])]
                 lsc.myloopdef.run_ingestsloan(listfile, 'ps1', _ps1frames, show=_show, force=_redo)
+            elif _stage == 'checkpsf':
+                lsc.myloopdef.checkpsf(ll['filename'])
+            elif _stage == 'checkmag':
+                lsc.myloopdef.checkmag(ll['filename'], _dmax)
+            elif _stage == 'checkwcs':
+                lsc.myloopdef.checkwcs(ll['filename'], _redo, 'photlco', _z1, _z2)
+            elif _stage == 'checkfast':
+                lsc.myloopdef.checkfast(ll['filename'], _redo)
+            elif _stage == 'checkquality':
+                lsc.myloopdef.checkquality(ll['filename'])
+            elif _stage == 'checkpos':
+                lsc.myloopdef.checkpos(ll['filename'], _ra, _dec)
+            elif _stage == 'checkcat':
+                lsc.myloopdef.checkcat(ll['filename'])
+            elif _stage == 'checkmissing':
+                lsc.myloopdef.check_missing(ll['filename'])
+            elif _stage == 'checkfvd':
+                lsc.myloopdef.checkfilevsdatabase(ll)
+            elif _stage == 'checkcosmic':
+                lsc.myloopdef.checkcosmic(ll['filename'])
+            elif _stage == 'checkdiff':
+                lsc.myloopdef.checkdiff(ll['filename'])
         else:
             print '\n### no data selected'
     # ################################################

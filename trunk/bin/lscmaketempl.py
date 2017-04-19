@@ -210,13 +210,12 @@ if __name__ == "__main__":
                               'airmass': lsc.util.readkey3(hd, 'airmass'),
                               'objname': lsc.util.readkey3(hd, 'object'), 'ut': lsc.util.readkey3(hd, 'ut'),
                               'wcs': lsc.util.readkey3(hd, 'wcserr'), 'instrument': lsc.util.readkey3(hd, 'instrume'),
-                              'ra0': lsc.util.readkey3(hd, 'RA'), 'dec0': lsc.util.readkey3(hd, 'DEC')}
-                dictionary['filename'] = string.split(imgout, '/')[-1]
-                dictionary['filepath'] = os.path.join(lsc.util.workdirectory, 'data/lsc/') + lsc.util.readkey3(hd, 'date-night') + '/'
-                dictionary['filetype'] = 4
-
+                              'ra0': lsc.util.readkey3(hd, 'RA'), 'dec0': lsc.util.readkey3(hd, 'DEC'),
+                              'filename': imgout, 'filepath': os.path.split(img0)[0] + '/', 'filetype': 4}
                 dictionary['telescopeid'] = lsc.mysqldef.getfromdataraw(conn, 'telescopes', 'name', dictionary['telescope'], column2='id')[0]['id']
                 dictionary['instrumentid'] = lsc.mysqldef.getfromdataraw(conn, 'instruments', 'name', dictionary['instrument'], column2='id')[0]['id']
+                if not dictionary['dayobs']: # pre-v1 data
+                    dictionary['dayobs'] = img0.split('_')[2]
 
                 ###################    insert in photlco
                 ggg = lsc.mysqldef.getfromdataraw(conn, 'photlco', 'filename', string.split(imgout, '/')[-1], '*')

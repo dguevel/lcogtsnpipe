@@ -138,7 +138,7 @@ if __name__ == "__main__":
                 dsat = fits.getdata(satu)
                 #ar1=where(arm>saturation,2,0)
                 out_fits = fits.PrimaryHDU(header=hdm, data=dsat + dmask)
-                out_fits.writeto(re.sub('.fits', '.mask.fits', string.split(gg, '/')[-1]), clobber=True,
+                out_fits.writeto(re.sub('.fits', '.mask.fits', string.split(gg, '/')[-1]), overwrite=True,
                                  output_verify='fix')
                 imglist2 = imglist2 + ',' + output
                 imgmask = imgmask + ',' + re.sub('.fits', '.mask.fits', string.split(gg, '/')[-1])
@@ -214,7 +214,7 @@ if __name__ == "__main__":
                 except:
                     pass
             out_fits = fits.PrimaryHDU(header=hd, data=ar)
-            out_fits.writeto(outname, clobber=True, output_verify='fix')
+            out_fits.writeto(outname, overwrite=True, output_verify='fix')
             os.system(line2)  # make noise image
 
             print outname

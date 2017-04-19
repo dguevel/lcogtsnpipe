@@ -1,8 +1,3 @@
-def xpa(arg):
-    import subprocess
-    subproc = subprocess.Popen('xpaset -p ds9 '+arg,shell=True)
-    subproc.communicate()
-
 def vizq(_ra,_dec,catalogue,radius):
     import os,string,re
     _site='vizier.u-strasbg.fr'

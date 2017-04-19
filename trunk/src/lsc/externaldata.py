@@ -243,11 +243,11 @@ def downloadsdss(_ra,_dec,_band,_radius=20, force=False):
           frame_weight = 1 / ((dn_err_image)**2)
           new_header['SKYLEVEL']  = np.mean(sky_image)
           #  save image in count
-          fits.writeto(output2, dn_image.transpose(), new_header,clobber=True)
+          fits.writeto(output2, dn_image.transpose(), new_header,overwrite=True)
           #  save weight image
-          fits.writeto(output3, frame_weight.transpose(), new_header,clobber=True)
+          fits.writeto(output3, frame_weight.transpose(), new_header,overwrite=True)
           #  save sky image 
-          fits.writeto(output4, sky_image.transpose(), new_header,clobber=True)
+          fits.writeto(output4, sky_image.transpose(), new_header,overwrite=True)
           filevec.append(output2)
           filevec.append(output3)
        return filevec
@@ -371,7 +371,7 @@ def sdss_swarp(imglist,_telescope='spectral',_ra='',_dec='',output='', objname='
                 mask_data, mask_header = fits.getdata(re.sub('.wt_','.mk_',name), header=True)
                 weight_data = 1/weight_data 
                 weight_fits = fits.PrimaryHDU(header=weight_header, data=weight_data)
-                weight_fits.writeto(weightimg, output_verify='fix', clobber=True)             
+                weight_fits.writeto(weightimg, output_verify='fix', overwrite=True)
              else:
                 os.system('cp '+name+' '+weightimg)
        imglist = [j for j in imglist if (j not in wtlist) and (j not in mklist)]
@@ -414,7 +414,7 @@ def sdss_swarp(imglist,_telescope='spectral',_ra='',_dec='',output='', objname='
     #  this is to take in account that the weight is normalized
     variance *= (np.median(np.abs(ar - np.median(ar)))*1.48)**2/np.median(variance)
     varimg = re.sub('.fits', '', output) + '.var.fits'
-    fits.writeto(varimg, variance, hd2, clobber=True)
+    fits.writeto(varimg, variance, hd2, overwrite=True)
 
     # put the saturation all values where the weight is zero 
     ar = np.where(ar2 == 0, _saturate, ar)
@@ -447,7 +447,7 @@ def sdss_swarp(imglist,_telescope='spectral',_ra='',_dec='',output='', objname='
 
     ar, hdr = northupeastleft(data=ar, header=hd)
     out_fits = fits.PrimaryHDU(header=hd, data=ar)
-    out_fits.writeto(output, clobber=True, output_verify='fix')
+    out_fits.writeto(output, overwrite=True, output_verify='fix')
     northupeastleft(filename=varimg)
     if show:
        lsc.display_image(output,2,True,'','')
@@ -477,7 +477,7 @@ def northupeastleft(filename='', data=None, header=None):
         header['cd1_2'] *= -1
         print 'flipping around y'
     if filename:
-        fits.writeto(filename, data, header, clobber=True, output_verify='fix')
+        fits.writeto(filename, data, header, overwrite=True, output_verify='fix')
     else:
         return data, header
 

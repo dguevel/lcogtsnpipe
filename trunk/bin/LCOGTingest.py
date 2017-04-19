@@ -186,7 +186,7 @@ def db_ingest(filepath, filename, force=False):
                   'groupidcode': groupidcode,
                   'targetid': targetid}
         for dbcol, hdrkey in db_to_hdrkey.items():
-            if hdrkey in hdr and hdr[hdrkey] not in ['NaN', 'UNKNOWN', None, '']:
+            if hdrkey in hdr and hdr[hdrkey] not in ['NaN', 'UNKNOWN', None, '', 'UNSPECIFIED']:
                 if hdrkey in ['RA', 'CAT-RA']:
                     dbdict[dbcol] = Angle(hdr[hdrkey], u.hourangle).to_string(u.deg, decimal=True, precision=7)
                 elif hdrkey in ['DEC', 'CAT-DEC']:
