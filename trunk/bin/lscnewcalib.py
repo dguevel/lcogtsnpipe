@@ -253,17 +253,17 @@ if __name__ == "__main__":
                 _ron = lsc.util.readkey3(hdr, 'ron')
                 _exptime = lsc.util.readkey3(hdr, 'exptime')
                 _pixelscale = lsc.util.readkey3(hdr, 'PIXSCALE')
+                _datamin = lsc.util.readkey3(hdr, 'datamin')
+                _datamax = lsc.util.readkey3(hdr, 'datamax')
 
                 a1, a2, a3, a4, = float(5. / _pixelscale), float(8. / _pixelscale), float(10. / _pixelscale), float(
                     20. / _pixelscale)
                 ap = str(a1) + "," + str(a2) + "," + str(a3)
-                _datamin = -100
-                _datamax = 45000
                 iraf.noao.digiphot.daophot.photpars.zmag = 0
                 iraf.noao.digiphot.daophot.datapars.readnoi = _gain  #1.4   #_ron
                 iraf.noao.digiphot.daophot.datapars.epadu = _ron  #  13      #_gain
-                iraf.noao.digiphot.daophot.datapars.datamin = -100  # -100  #_datamin
-                iraf.noao.digiphot.daophot.datapars.datamax = 51000  #_datamax
+                iraf.noao.digiphot.daophot.datapars.datamin = _datamin
+                iraf.noao.digiphot.daophot.datapars.datamax = _datamax
                 iraf.noao.daophot.fitskypars.salgori = 'centroid'  # 'median', default is 'mode'
                 iraf.noao.daophot.fitskypars.annulus = a3
                 iraf.noao.daophot.fitskypars.dannulus = a4

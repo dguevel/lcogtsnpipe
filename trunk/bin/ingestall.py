@@ -6,6 +6,7 @@ from LCOGTingest import *
 from datetime import datetime, timedelta
 import os
 import sys
+import traceback
 
 if len(sys.argv) > 1:
     daterange = sys.argv[1]
@@ -37,21 +38,21 @@ print 'Total number of frames:', len(frames)
 for frame in frames:
     try:
         filepath, filename = download_frame(frame)
-    except Exception as e:
+    except:
         print '!!! FAILED TO DOWNLOAD ' + frame['filename']
-        sys.stderr.write(e)
+        traceback.print_exc()
         continue
     try:
         db_ingest(filepath, filename)
-    except Exception as e:
+    except:
         print '!!! FAILED TO INGEST ' + filename
-        sys.stderr.write(e)
+        traceback.print_exc()
         continue
     if '-en0' in filename and '-e00.fits' in filename and not os.path.isfile(filepath + filename.replace('.fits', '.png')):
         try:
             fits2png(filepath + filename)
-        except Exception as e:
+        except:
             print '!!! FAILED TO MAKE PNG FOR ' + filename
-            sys.stderr.write(e)
+            traceback.print_exc()
 
 os.system('lscingestredudata.py -e ' + daterange) # ingest new data into photlco

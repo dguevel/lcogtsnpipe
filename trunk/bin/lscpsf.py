@@ -80,7 +80,7 @@ def runsex(img, fwhm, thresh, pix_scale):  ## run_sextractor  fwhm in pixel
            np.array(classstar), np.array(fluxrad), np.array(bkg)
 
 
-def psffit2(img, fwhm, psfstars, hdr, _datamax=45000, psffun='gauss',  fixaperture=False):
+def psffit2(img, fwhm, psfstars, hdr, _datamax, psffun='gauss',  fixaperture=False):
     ''' 
     giving an image, a psffile,  calculate the magnitudes of strs in the file _psf.coo
     '''
@@ -141,7 +141,7 @@ def psffit2(img, fwhm, psfstars, hdr, _datamax=45000, psffun='gauss',  fixapertu
     return photmag, fitmag
 
 
-def psffit(img, fwhm, psfstars, hdr, interactive, _datamax=45000, psffun='gauss', fixaperture=False):
+def psffit(img, fwhm, psfstars, hdr, interactive, _datamax, psffun='gauss', fixaperture=False):
     ''' 
     giving an image, a psffile compute the psf using the file _psf.coo
     '''
@@ -238,10 +238,8 @@ def ecpsf(img, ofwhm, threshold, psfstars, distance, interactive, psffun='gauss'
             elif 'CCDSUM' in hdr:
                 scale = lsc.util.readkey3(hdr, 'CCDSCALE') * int(string.split(lsc.util.readkey3(hdr, 'CCDSUM'))[0])
 
-        if _datamax is None and 'kb' in instrument:
-            _datamax = 45000
-        elif _datamax is None:
-            _datamax = 65000
+        if _datamax is None:
+            _datamax = lsc.util.readkey3(hdr, 'datamax')
         _wcserr = lsc.util.readkey3(hdr, 'wcserr')
         print _wcserr
         if float(_wcserr) == 0:
@@ -541,7 +539,7 @@ if __name__ == "__main__":
     parser.add_option("--fix", action="store_true", dest='fixaperture', default=False,
                       help='fixaperture \t\t\t [%default]')
     parser.add_option("--datamax", type=int,
-                      help="value above which pixels are considered saturated (default = 45000 for SBIG, 65000 otherwise)")
+                      help="value above which pixels are considered saturated (default = SATURATE in header)")
 
     option, args = parser.parse_args()
     if len(args) < 1: 

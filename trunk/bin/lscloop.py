@@ -427,61 +427,22 @@ if __name__ == "__main__":   # main program
                                 if data and data[0][_field + '_cat']: # if target is found and catalog is not an empty string
                                     _catalogue = lsc.__path__[0] + '/standard/cat/' + _field + '/' + data[0][_field + '_cat']
                         if _field == 'apass':
-                            ww0 = asarray([i for i in range(len(ll3['filter'])) if (ll['filter'][i] in ['V', 'B'])])
-                            ww1 = asarray(
-                                [i for i in range(len(ll3['filter'])) if (ll['filter'][i] in ['gp', 'rp', 'ip'])])
-                            ww2 = asarray([i for i in range(len(ll3['filter'])) if
-                                           (ll['filter'][i] in ['SDSS-G', 'SDSS-R', 'SDSS-I'])])
-
-                            _color = ''
-                            if len(ww0) >= 1:
-                                for jj in ['B', 'V']:
-                                    if jj in list(set(ll3['filter'])):
-                                        _color = _color + lsc.sites.filterst1[jj]
-                                print _color, _calib, _field
-                                lsc.myloopdef.run_zero(ll3['filename'][ww0], _fix, _type, _field, _catalogue, _color,
-                                                       _interactive, _redo, _show, _cutmag, 'photlco', _calib, zcatnew)
-                            _color = ''
-                            if len(ww1) >= 1:
-                                for jj in ['gp', 'rp', 'ip']:
-                                    if jj in list(set(ll3['filter'])):
-                                        _color = _color + lsc.sites.filterst1[jj]
-                                print _color, _calib, _field
-                                lsc.myloopdef.run_zero(ll3['filename'][ww1], _fix, _type, _field, _catalogue, _color,
-                                                       _interactive, _redo, _show, _cutmag, 'photlco', _calib, zcatnew)
-                            _color = ''
-                            if len(ww2) >= 1:
-                                for jj in ['SDSS-G', 'SDSS-R', 'SDSS-I']:
-                                    if jj in list(set(ll3['filter'])):
-                                        _color = _color + lsc.sites.filterst1[jj]
-                                print _color, _calib, _field
-                                lsc.myloopdef.run_zero(ll3['filename'][ww2], _fix, _type, _field, _catalogue, _color,
-                                                       _interactive, _redo, _show, _cutmag, 'photlco', _calib, zcatnew)
-
+                            filters_in_field = set('BVgri')
                         elif _field == 'landolt':
-                            ww0 = asarray([i for i in range(len(ll3['filter'])) if
-                                           (ll['filter'][i] in ['U', 'B', 'V', 'R', 'I'])])
-                            _color = ''
-                            if len(ww0) >= 1:
-                                for jj in ['U', 'B', 'V', 'R', 'I']:
-                                    if jj in list(set(ll3['filter'])):
-                                        _color = _color + lsc.sites.filterst1[jj]
-                                print _color, _calib, _field
-                                lsc.myloopdef.run_zero(ll3['filename'][ww0], _fix, _type, _field, _catalogue, _color,
-                                                       _interactive, _redo, _show, _cutmag, 'photlco', _calib, zcatnew)
+                            filters_in_field = set('UBVRI')
                         elif _field == 'sloan':
-                            ww0 = asarray([i for i in range(len(ll3['filter'])) if
-                                           (ll['filter'][i] in ['up', 'gp', 'rp', 'ip', 'zs', 'SDSS-G', 'SDSS-R', 'SDSS-I'])])
-                            _color = ''
-                            if len(ww0) >= 1:
-                                for jj in ['up', 'gp', 'rp', 'ip', 'zs']:
-                                    if jj in list(set(ll3['filter'])):
-                                        _color = _color + lsc.sites.filterst1[jj]
-                                print _color, _calib, _field
-                                lsc.myloopdef.run_zero(ll3['filename'][ww0], _fix, _type, _field, _catalogue, _color,
-                                                       _interactive, _redo, _show, _cutmag, 'photlco', _calib, zcatnew)
+                            filters_in_field = set('ugriz')
                         else:
                             print 'warning: field not defined, zeropoint not computed'
+
+                        filenames = [fn for fn, filt in zip(ll3['filename'], ll3['filter']) if lsc.sites.filterst1[filt] in filters_in_field]
+                        filters_in_images = {lsc.sites.filterst1[filt] for filt in ll3['filter']}
+                        _color = ''.join(filters_in_images & filters_in_field)
+                        if _color:
+                            lsc.myloopdef.run_zero(filenames, _fix, _type, _field, _catalogue, _color, _interactive, _redo, _show, _cutmag, 'photlco', _calib, zcatnew)
+                        else:
+                            print 'none of your filters ({}) match the chosen catalog ({})'.format(''.join(filters_in_images), ''.join(filters_in_field))
+
                     elif _stage == 'abscat':  #    compute magnitudes for sequence stars > img.cat
                         if _standard:
                             mm = lsc.myloopdef.filtralist(ll0, _filter, '', _standard, '', '', '', _filetype,_groupid, _instrument, _difftype)

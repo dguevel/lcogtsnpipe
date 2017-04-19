@@ -37,9 +37,9 @@ if __name__ == "__main__":
                       help=' backgroun radius dimension \t\t %default')
     parser.add_option("-z", "--size", dest="size", default=7, type='float',
                       help=' half size of the stamp \t\t %default')
-    parser.add_option("-m", "--datamax", dest="datamax", default=51000, type='float',
+    parser.add_option("-m", "--datamax", dest="datamax", type='float',
                       help=' data max for saturation \t\t %default')
-    parser.add_option("--datamin", dest="datamin", default=-500, type='float',
+    parser.add_option("--datamin", dest="datamin", type='float',
                       help=' data min for saturation \t\t %default')
     parser.add_option("-i", "--interactive", action="store_true", dest='interactive', default=False,
                       help='Interactive \t\t\t [%default]')
@@ -554,8 +554,6 @@ if __name__ == "__main__":
                     iraf.imcopy("bgs.fits", out)
                     iraf.imarith("original.fits", "-", "sky.fits", "sn.fits")
                     iraf.imarith("sn.fits", "+", midpt, "sn.fits")
-                    answ0 = 'y'
-                    print answ0
                     if _show or _interactive:
                         _tmp1, _tmp2, goon = lsc.util.display_image('original.fits', 1, z11, z22, False, _xcen=.25,
                                                                     _ycen=.25, _xsize=.3, _ysize=.3)
@@ -593,9 +591,13 @@ if __name__ == "__main__":
 
                 ####################################    FITSN        ###################################
                 print img, psfimage, 'xxxxx'
+                if _dmax is None:
+                    _dmax = lsc.util.readkey3(hdr, 'datamax')
+                if _dmin is None:
+                    _dmin = lsc.util.readkey3(hdr, 'datamin')
                 apori1, apori2, apori3, apmag1, apmag2, apmag3, fitmag, truemag, magerr, centx, centy = \
                     lsc.lscsnoopy.fitsn(img, psfimage, img + '.sn.coo', _recenter, fwhm0, 'original', 'sn',
-                                        'residual', _show, _interactive, z11, z22, midpt, _size, apco0, _dmax, _dmin)
+                                        'residual', _show, _interactive, _dmax, _dmin, z11, z22, midpt, _size, apco0)
                 #################       Iterate Beckground    ###################################
                 if _interactive:
                     if not _numiter:
@@ -652,7 +654,7 @@ if __name__ == "__main__":
                     lsc.util.delete("skyfit.fits")
                     apori1, apori2, apori3, apmag1, apmag2, apmag3, fitmag, truemag, magerr, centx, centy = \
                         lsc.lscsnoopy.fitsn( img, psfimage, img + '.sn.coo', _recenter, fwhm0, 'original', 'sn',
-                                             'residual', _show, _interactive, z11, z22, midpt, _size, apco0, _dmax, _dmin)
+                                             'residual', _show, _interactive, _dmax, _dmin, z11, z22, midpt, _size, apco0)
                     print _numiter, _count
                     if _interactive:
                         if not _numiter:
