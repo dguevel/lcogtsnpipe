@@ -226,6 +226,10 @@ def readkey3(hdr,keyword):
                          'propid'    : 'PROPID',\
                          'type'      : 'OBSTYPE',\
                          'telescop'  : 'TELID'} 
+          if _instrume == 'fs02': # OGG
+              useful_keys['pixscale'] = 0.30104
+          elif _instrume in ['fs01', 'fs03']: # COJ
+              useful_keys['pixscale'] = 0.304
        else:
           useful_keys = {'object'    : 'OBJECT',\
                             'date-obs'  : 'DATE-OBS',\
@@ -260,7 +264,7 @@ def readkey3(hdr,keyword):
                       'ron'       : 'RDNOISE',\
                       'date-obs'  : 'DATE-OBS',\
                       'date-night': 'DAY-OBS',\
-}
+                      'datamax'   : 'SATURATE'}
     if keyword in useful_keys:
        if type(useful_keys[keyword])==float:
           value=useful_keys[keyword]

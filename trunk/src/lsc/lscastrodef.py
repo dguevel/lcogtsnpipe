@@ -574,94 +574,95 @@ def zeropoint(img,_field,verbose=False,catalogue=''):
     _instrume=readkey3(hdr,'instrume')
     _date=readkey3(hdr,'date-night')
     _object=readkey3(hdr,'object')
+    _datamax = readkey3(hdr, 'datamax')
+    _datamin = readkey3(hdr, 'datamin')
     _siteid = hdr['SITEID']
     if _siteid in lsc.sites.extinction:
         kk = lsc.sites.extinction[_siteid]
     else:
         print _siteid
         sys.exit('siteid not in lsc.sites.extinction')
-    if 1==1:
-        if catalogue:
-            stdcooC=lsc.lscastrodef.readtxt(lsc.__path__[0]+'/standard/cat/'+catalogue+'.cat')
-            rastdC,decstdC=array(stdcooC['ra'],float),array(stdcooC['dec'],float)
-            delete('tmp.stdC.pix')
-            iraf.wcsctran(lsc.__path__[0]+'/standard/cat/'+catalogue+'.cat','tmp.stdC.pix',img + '[0]',inwcs='world',units='degrees degrees',outwcs='logical',\
-                              columns='1 2',formats='%10.1f %10.1f',verbose='no')
-            standardpixC=lsc.lscastrodef.readtxt('tmp.stdC.pix')
-            xstdC=standardpixC['ra']
-            ystdC=standardpixC['dec']
-            idstdC=standardpixC['id']
-            xstdC=compress((array(xstdC,float)<readkey3(hdr,'naxis1'))&(array(xstdC,float)>0)&(array(ystdC,float)>0)&(array(ystdC,float)<readkey3(hdr,'naxis2')),xstdC)
-        else:   xstdC,ystdC,idstdC=[],[],[]
-        ######## check if it is landolt field
-        stdcooL=lsc.lscastrodef.readtxt(lsc.__path__[0]+'/standard/cat/landolt.cat')
-        rastdL,decstdL=array(stdcooL['ra'],float),array(stdcooL['dec'],float)
-        delete('tmp.stdL.pix')
-        iraf.wcsctran(lsc.__path__[0]+'/standard/cat/landolt.cat','tmp.stdL.pix',img + '[0]',inwcs='world',units='degrees degrees',outwcs='logical',\
+    if catalogue:
+        stdcooC=lsc.lscastrodef.readtxt(lsc.__path__[0]+'/standard/cat/'+catalogue+'.cat')
+        rastdC,decstdC=array(stdcooC['ra'],float),array(stdcooC['dec'],float)
+        delete('tmp.stdC.pix')
+        iraf.wcsctran(lsc.__path__[0]+'/standard/cat/'+catalogue+'.cat','tmp.stdC.pix',img + '[0]',inwcs='world',units='degrees degrees',outwcs='logical',\
                           columns='1 2',formats='%10.1f %10.1f',verbose='no')
-        standardpixL=lsc.lscastrodef.readtxt('tmp.stdL.pix')
-        xstdL=standardpixL['ra']
-        ystdL=standardpixL['dec']
-        idstdL=standardpixL['id']
-        xstdL=compress((array(xstdL,float)<readkey3(hdr,'naxis1'))&(array(xstdL,float)>0)&(array(ystdL,float)>0)&(array(ystdL,float)<readkey3(hdr,'naxis2')),xstdL)
+        standardpixC=lsc.lscastrodef.readtxt('tmp.stdC.pix')
+        xstdC=standardpixC['ra']
+        ystdC=standardpixC['dec']
+        idstdC=standardpixC['id']
+        xstdC=compress((array(xstdC,float)<readkey3(hdr,'naxis1'))&(array(xstdC,float)>0)&(array(ystdC,float)>0)&(array(ystdC,float)<readkey3(hdr,'naxis2')),xstdC)
+    else:   xstdC,ystdC,idstdC=[],[],[]
+    ######## check if it is landolt field
+    stdcooL=lsc.lscastrodef.readtxt(lsc.__path__[0]+'/standard/cat/landolt.cat')
+    rastdL,decstdL=array(stdcooL['ra'],float),array(stdcooL['dec'],float)
+    delete('tmp.stdL.pix')
+    iraf.wcsctran(lsc.__path__[0]+'/standard/cat/landolt.cat','tmp.stdL.pix',img + '[0]',inwcs='world',units='degrees degrees',outwcs='logical',\
+                      columns='1 2',formats='%10.1f %10.1f',verbose='no')
+    standardpixL=lsc.lscastrodef.readtxt('tmp.stdL.pix')
+    xstdL=standardpixL['ra']
+    ystdL=standardpixL['dec']
+    idstdL=standardpixL['id']
+    xstdL=compress((array(xstdL,float)<readkey3(hdr,'naxis1'))&(array(xstdL,float)>0)&(array(ystdL,float)>0)&(array(ystdL,float)<readkey3(hdr,'naxis2')),xstdL)
 ###############################################
-        ######## check if it is sloan field
-        _ra=readkey3(hdr,'RA')
-        _dec=readkey3(hdr,'DEC')
-        magsel0,magsel1=12,18
-        print _ra,_dec
-        print 'sloan to file take degree degree'
-        _ids=lsc.lscastrodef.sloan2file(_ra,_dec,20,float(magsel0),float(magsel1),'_tmpsloan.cat')
-        ascifile='_tmpsloan.cat'
-        stdcooS=lsc.lscastrodef.readtxt(ascifile)
-        rastdS,decstdS=array(stdcooS['ra'],float),array(stdcooS['dec'],float)
-        delete('tmp.stdS.pix')
-        iraf.wcsctran(ascifile,'tmp.stdS.pix',img + '[0]',inwcs='world',units='degrees degrees',outwcs='logical',columns='1 2',formats='%10.1f %10.1f',verbose='no')
-        standardpixS=lsc.lscastrodef.readtxt('tmp.stdS.pix')
-        xstdS=standardpixS['ra']
-        ystdS=standardpixS['dec']
-        idstdS=standardpixS['id']
-        xstdS=compress((array(xstdS,float)<readkey3(hdr,'naxis1'))&(array(xstdS,float)>0)&(array(ystdS,float)>0)&(array(ystdS,float)<readkey3(hdr,'naxis2')),xstdS)
-       ##############
-        print _filter
-        if _filter in ['B', 'V', 'R', 'I']:
-            if _field=='sloan':   standardpix,stdcoo={'ra':[9999],'dec':[9999],'id':[1]},{'ra':[9999],'dec':[9999]}
+    ######## check if it is sloan field
+    _ra=readkey3(hdr,'RA')
+    _dec=readkey3(hdr,'DEC')
+    magsel0,magsel1=12,18
+    print _ra,_dec
+    print 'sloan to file take degree degree'
+    _ids=lsc.lscastrodef.sloan2file(_ra,_dec,20,float(magsel0),float(magsel1),'_tmpsloan.cat')
+    ascifile='_tmpsloan.cat'
+    stdcooS=lsc.lscastrodef.readtxt(ascifile)
+    rastdS,decstdS=array(stdcooS['ra'],float),array(stdcooS['dec'],float)
+    delete('tmp.stdS.pix')
+    iraf.wcsctran(ascifile,'tmp.stdS.pix',img + '[0]',inwcs='world',units='degrees degrees',outwcs='logical',columns='1 2',formats='%10.1f %10.1f',verbose='no')
+    standardpixS=lsc.lscastrodef.readtxt('tmp.stdS.pix')
+    xstdS=standardpixS['ra']
+    ystdS=standardpixS['dec']
+    idstdS=standardpixS['id']
+    xstdS=compress((array(xstdS,float)<readkey3(hdr,'naxis1'))&(array(xstdS,float)>0)&(array(ystdS,float)>0)&(array(ystdS,float)<readkey3(hdr,'naxis2')),xstdS)
+   ##############
+    print _filter
+    if _filter in ['B', 'V', 'R', 'I']:
+        if _field=='sloan':   standardpix,stdcoo={'ra':[9999],'dec':[9999],'id':[1]},{'ra':[9999],'dec':[9999]}
+        else:
+            _field='landolt'
+            filters={'U':'U', 'B':'B', 'V':'V', 'R':'R', 'I':'I'}
+            colors={'U':['UB'],'B':['BV'],'V':['BV','VR'],'R':['VR','RI'],'I':['VI','RI']}
+            if catalogue:
+                standardpix=standardpixC
+                stdcoo=stdcooC
             else:
-                _field='landolt'
-                filters={'U':'U', 'B':'B', 'V':'V', 'R':'R', 'I':'I'}
-                colors={'U':['UB'],'B':['BV'],'V':['BV','VR'],'R':['VR','RI'],'I':['VI','RI']}
-                if catalogue:
-                    standardpix=standardpixC
-                    stdcoo=stdcooC
-                else:
-                    if len(xstdL)>=1:
-                        standardpix=standardpixL
-                        stdcoo=stdcooL
-                    elif len(xstdS)>=1:    
-                        standardpix=standardpixS
-                        stdcoo=stdcooS
-                        stdcoo=lsc.lscastrodef.transformsloanlandolt(stdcoo)
-                        print '\n### transform sloan in landolt'
-                    else:    standardpix,stdcoo={'ra':[9999],'dec':[9999],'id':[1]},{'ra':[9999],'dec':[9999]}
-        elif _filter in  ['SDSS-U','SDSS-G','SDSS-R','SDSS-I','Pan-Starrs-Z']: 
-            if _field=='landolt':   standardpix,stdcoo={'ra':[9999],'dec':[9999],'id':[1]},{'ra':[9999],'dec':[9999]}
+                if len(xstdL)>=1:
+                    standardpix=standardpixL
+                    stdcoo=stdcooL
+                elif len(xstdS)>=1:
+                    standardpix=standardpixS
+                    stdcoo=stdcooS
+                    stdcoo=lsc.lscastrodef.transformsloanlandolt(stdcoo)
+                    print '\n### transform sloan in landolt'
+                else:    standardpix,stdcoo={'ra':[9999],'dec':[9999],'id':[1]},{'ra':[9999],'dec':[9999]}
+    elif _filter in  ['SDSS-U','SDSS-G','SDSS-R','SDSS-I','Pan-Starrs-Z']:
+        if _field=='landolt':   standardpix,stdcoo={'ra':[9999],'dec':[9999],'id':[1]},{'ra':[9999],'dec':[9999]}
+        else:
+            _field='sloan'
+            filters={'u':'u','i':'i','g':'g','r':'r','z':'z'}
+            colors={'u':['ug'],'i':['iz','ri'],'r':['gr','ri'],'g':['gr'],'z':['rz','iz']}
+            if catalogue:
+                standardpix=standardpixC
+                stdcoo=stdcooC
             else:
-                _field='sloan'
-                filters={'u':'u','i':'i','g':'g','r':'r','z':'z'}
-                colors={'u':['ug'],'i':['iz','ri'],'r':['gr','ri'],'g':['gr'],'z':['rz','iz']}
-                if catalogue:
-                    standardpix=standardpixC
-                    stdcoo=stdcooC
-                else:
-                    if len(xstdS)>=1:
-                        standardpix=standardpixS
-                        stdcoo=stdcooS
-                    elif len(xstdL)>=1:
-                        standardpix=standardpixL
-                        stdcoo=stdcooL
-                        stdcoo=lsc.lscastrodef.transformlandoltsloan(stdcoo)
-                        print '\n### transform landolt to sloan'
-                    else:   standardpix,stdcoo={'ra':[9999],'dec':[9999],'id':[1]},{'ra':[9999],'dec':[9999]}
+                if len(xstdS)>=1:
+                    standardpix=standardpixS
+                    stdcoo=stdcooS
+                elif len(xstdL)>=1:
+                    standardpix=standardpixL
+                    stdcoo=stdcooL
+                    stdcoo=lsc.lscastrodef.transformlandoltsloan(stdcoo)
+                    print '\n### transform landolt to sloan'
+                else:   standardpix,stdcoo={'ra':[9999],'dec':[9999],'id':[1]},{'ra':[9999],'dec':[9999]}
 
     xstd=standardpix['ra']
     ystd=standardpix['dec']
@@ -755,8 +756,8 @@ def zeropoint(img,_field,verbose=False,catalogue=''):
         iraf.noao.digiphot.daophot.photpars.apertures = fwhm0*3
         iraf.noao.digiphot.daophot.datapars.readnoi = readkey3(hdr,'ron')
         iraf.noao.digiphot.daophot.datapars.epadu = readkey3(hdr,'gain')
-        iraf.noao.digiphot.daophot.datapars.datamin = -1000
-        iraf.noao.digiphot.daophot.datapars.datamax = 45000
+        iraf.noao.digiphot.daophot.datapars.datamin = _datamin
+        iraf.noao.digiphot.daophot.datapars.datamax = _datamax
         iraf.noao.digiphot.daophot.datapars.exposure = 'EXPTIME'
         iraf.noao.digiphot.daophot.datapars.airmass =  'AIRMASS'
         iraf.noao.digiphot.daophot.datapars.filter =   'filter2'

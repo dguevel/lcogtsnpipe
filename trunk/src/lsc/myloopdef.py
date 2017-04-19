@@ -140,27 +140,25 @@ def run_getmag(imglist, _output='', _interactive=False, _show=False, _bin=1e-10,
     if _output:
         ff = open(_output, 'w')
 
-    filters_used = []
-    for _tel in setup:
-        filters_used += setup[_tel].keys()
+    filters_used = sum([[lsc.sites.filterst1[filt] for filt in setup[_tel].keys()] for _tel in setup], [])
     filters = []
-    for filt in ['U', 'B', 'V', 'R', 'I', 'up', 'gp', 'rp', 'ip', 'zs']:
+    for filt in 'UBVRIugriz':
         if filt in filters_used:
             filters.append(filt)
     for _tel in setup:
         line0 = '# %15s%15s' % ('dateobs', 'jd')
         for filt in filters:
-            if filt in setup[_tel].keys():
+            if filt in [lsc.sites.filterst1[key] for key in setup[_tel]]:
                 line0 += '%12s%12s ' % (str(filt), str(filt) + 'err')
         for _fil in setup[_tel]:
             for j in range(0, len(setup[_tel][_fil]['mjd'])):
                 line = '  %10s %12.4f ' % (str(setup[_tel][_fil]['date'][j]), setup[_tel][_fil]['jd'][j])
                 for filt in filters:
-                    if filt == _fil:
+                    if _fil in lsc.sites.filterst[filt]:
                         line += '%12.4f %12.4f ' % (setup[_tel][_fil]['mag'][j], setup[_tel][_fil]['dmag'][j])
                     else:
                         line += '%12s %12s ' % ('9999', '0.0')
-                line += '%6s %2s\n' % (_tel, _fil)
+                line += '%6s %2s\n' % (_tel, lsc.sites.filterst1[_fil])
                 linetot[setup[_tel][_fil]['mjd'][j]] = line
     aaa = linetot.keys()
     if _output:
@@ -467,35 +465,37 @@ def run_fit(imglist, _ras='', _decs='', _xord=3, _yord=3, _bkg=4, _size=7, _rece
     direc = lsc.__path__[0]
 
     if interactive:
-        ii = '-i'
+        ii = ' -i'
     else:
         ii = ''
     if _recenter:
-        cc = '-c'
+        cc = ' -c'
     else:
         cc = ''
     if show:
-        ss = '-s'
+        ss = ' -s'
     else:
         ss = ''
     if redo:
-        rr = '-r'
+        rr = ' -r'
     else:
         rr = ''
     if _ras:
-        _ras = '-R ' + str(_ras)
+        _ras = ' -R ' + str(_ras)
     if _decs:
-        _decs = '-D ' + str(_decs)
+        _decs = ' -D ' + str(_decs)
     if _ra0:
-        _ra0 =  '--RA0 ' + str(_ra0)
+        _ra0 =  ' --RA0 ' + str(_ra0)
     if _dec0:
-        _dec0 = '--DEC0 '+ str(_dec0)
-
-    # different defaults for run_fit and run_psf
-    if dmax is None:
-        dmax = 51000
-    if dmin is None:
-        dmin = -500
+        _dec0 = ' --DEC0 ' + str(_dec0)
+    if dmax is not None:
+        _dmax = ' --datamax ' + str(dmax)
+    else:
+        _dmax = ''
+    if dmin is not None:
+        _dmin = ' --datamin ' + str(dmin)
+    else:
+        _dmin = ''
 
     for img in imglist:
         status = checkstage(img, 'psfmag')
@@ -509,9 +509,8 @@ def run_fit(imglist, _ras='', _decs='', _xord=3, _yord=3, _bkg=4, _size=7, _rece
                 print img0, _ref, show
                 _ras, _decs = lsc.myloopdef.getcoordfromref(img0, _ref, show)
 
-            command = 'lscsn.py ' + _dir + img + ' ' + ii + ' ' + ss + ' ' + rr + ' -x ' + str(_xord) + ' -y ' +\
-                      str(_yord) + ' ' + str(_ras) + ' ' + str(_decs) + ' ' + cc + ' -b ' + str(_bkg) + '  -z ' + str(_size) +\
-                      ' --datamax ' + str(dmax) + ' '+' --datamin='+str(dmin) + ' '+_ra0+' '+_dec0
+            command = 'lscsn.py ' + _dir + img + ii + ss + rr + cc + ' -x ' + str(_xord) + ' -y ' + str(_yord) + \
+                      _ras + _decs + _ra0 + _dec0 + ' -b ' + str(_bkg) + ' -z ' + str(_size) + _dmax + _dmin
             #if str(ggg[0]['filetype']) == '3':
             #    try:
             #        img2 = fits.getheader(_dir + img)['PSF']
@@ -749,9 +748,6 @@ def filtralist(ll2, _filter, _id, _name, _ra, _dec, _bad, _filetype=1, _groupid=
             ww = asarray([i for i in range(len(ll1['filter']))
                           if ((ll1['filter'][i] in ['B', 'V', 'Bessell-B','Bessell-V', 'gp', 'ip', 'rp', 'SDSS-G',
                                                     'SDSS-R', 'SDSS-I']))])
-        elif _filter in ['zs', 'up', 'gp', 'ip', 'rp', 'U', 'B', 'V', 'R', 'I', 'SDSS-G', 'SDSS-R', 'SDSS-I',
-                         'Pan-Starrs-Z', 'Bessell-B', 'Bessell-V', 'Bessell-R', 'Bessell-I']:
-            ww = asarray([i for i in range(len(ll1['filter'])) if ((ll1['filter'][i] in [_filter]))])
         else:
             lista = []
             for fil in string.split(_filter, ','):
@@ -1034,7 +1030,7 @@ def checkpsf(imglist, database='photlco'):
             iraf.delete('_psf.psf.fits', verify=False)
             if os.path.isfile(_dir + re.sub('.fits', '.psf.fits', img)):
                 print img
-                lsc.util.marksn2(_dir + img, _dir + re.sub('fits', 'sn2.fits', img), 1, '', True)
+                lsc.util.marksn2(_dir + img, _dir + re.sub('fits', 'sn2.fits', img))
                 iraf.seepsf(_dir + re.sub('.fits', '.psf.fits', img), '_psf.psf')
                 iraf.surface('_psf.psf')
                 aa = raw_input('>>>good psf [[y]/n] or [b] bad quality ? ')
@@ -1102,24 +1098,16 @@ def checkwcs(imglist, force=True, database='photlco', _z1='', _z2=''):
                 iraf.tvmark(1, 'STDIN', Stdin=list(ccc), mark="circle", number='yes', label='no', radii=15, nxoffse=5,
                             nyoffse=5, color=206, txsize=3)
 
-                _catalogue = glob.glob(lsc.__path__[0] + '/standard/cat/landolt/' + _SN0 + '*')
-                if not _catalogue:
-                    _catalogue = glob.glob(lsc.__path__[0] + '/standard/cat/sloan/' + _SN0 + '*')
-                if not _catalogue:
-                    _catalogue = glob.glob(lsc.__path__[0] + '/standard/cat/apass/' + _SN0 + '*')
-            else:
-                _catalogue = ''
-            if len(_catalogue) >= 1:
-                catvec = lsc.lscastrodef.readtxt(_catalogue[0])
-                bbb = []
-                for i in range(0, len(catvec['ra'])):
-                    bbb.append(catvec['ra'][i] + ' ' + catvec['dec'][i])
-                aaa = iraf.wcsctran('STDIN', 'STDOUT', _dir + img + '[0]', Stdin=list(bbb), inwcs='world',
-                                    units='degrees degrees', outwcs='logical', columns='1 2', formats='%10.5f %10.5f',
-                                    Stdout=1)
-                iraf.tvmark(1, 'STDIN', Stdin=list(aaa), mark="cross", number='yes', label='no', radii=1, nxoffse=5,
-                            nyoffse=5, color=204, txsize=1)
-
+            for field in ['sloan', 'apass', 'landolt']:
+                _catalogue = lsc.util.getcatalog(_dir + img, field)
+                if _catalogue:
+                    catvec = lsc.lscastrodef.readtxt(_catalogue)
+                    bbb = [ra + ' ' + dec for ra, dec in zip(catvec['ra'], catvec['dec'])]
+                    aaa = iraf.wcsctran('STDIN', 'STDOUT', _dir + img + '[0]', Stdin=bbb, inwcs='world', units='degrees degrees',
+                                        outwcs='logical', columns='1 2', formats='%10.5f %10.5f', Stdout=1)
+                    iraf.tvmark(1, 'STDIN', Stdin=list(aaa), mark="cross", number='yes', label='no', radii=1, nxoffse=5,
+                                nyoffse=5, color=204, txsize=1)
+                    break
             else:
                 catvec = lsc.lscastrodef.querycatalogue('usnoa2', _dir + img, 'vizir')
                 apix1 = catvec['pix']
@@ -1370,14 +1358,14 @@ def checkdiff(imglist, database='photlco'):
             print 'status ' + str(status) + ': unknown status'
 
 def display_psf_fit(img, datamax=None):
-    if datamax is None:
-        datamax = 51000
     ggg = lsc.mysqldef.getfromdataraw(conn, 'photlco', 'filename', img, '*')
     ogfile = ggg[0]['filepath'] + img.replace('.fits', '.og.fits')
     rsfile = ggg[0]['filepath'] + img.replace('.fits', '.rs.fits')
     if os.path.isfile(ogfile) and os.path.isfile(rsfile):
-        ogdata = fits.getdata(ogfile)
+        ogdata, hdr = fits.getdata(ogfile, header=True)
         rsdata = fits.getdata(rsfile)
+        if datamax is None:
+            datamax = lsc.util.readkey3(hdr, 'datamax')
         plt.clf()
         axL = plt.subplot(1, 2, 1, adjustable='box-forced')
         axR = plt.subplot(1, 2, 2, sharex=axL, sharey=axL, adjustable='box-forced')
@@ -1393,7 +1381,7 @@ def display_psf_fit(img, datamax=None):
         plt.gcf().text(0.5, 0.99, '{filename}\nfilter = {filter}\nexptime = {exptime:.0f} s\npsfmag = {psfmag:.2f} mag'.format(**ggg[0]), va='top', ha='center')
     return ogfile, rsfile
 
-def checkmag(imglist, datamax):
+def checkmag(imglist, datamax=None):
     plt.ion()
     for img in imglist:
         status = checkstage(img, 'checkmag')
@@ -1626,9 +1614,9 @@ class PickablePlot():
 
 def plotfast2(setup):
     _symbol = 'sdo+34<>^*sdo+34<>^*sdo+34<>^*sdo+34<>^*sdo+34<>^*sdo+34<>^*sdo+34<>^*sdo+34<>^*'
-    _color = {'up': '#2c0080', 'gp': '#00ccff', 'rp': '#ff7d00', 'ip': '#90002c', 'zs': '#000000',
-                'U': '#3c0072', 'B': '#0057ff', 'V': '#79ff00', 'R': '#ff7000', 'I': '#80000d'}
-    _shift = {'U': -3, 'B': -2, 'V': -1, 'R': 0, 'I': 1, 'up': -2, 'gp': -1, 'rp': 0, 'ip': 1, 'zs': 2}
+    _color = {'u': '#2c0080', 'g': '#00ccff', 'r': '#ff7d00', 'i': '#90002c', 'z': '#000000',
+              'U': '#3c0072', 'B': '#0057ff', 'V': '#79ff00', 'R': '#ff7000', 'I': '#80000d'}
+    _shift = {'U': -3, 'B': -2, 'V': -1, 'R': 0, 'I': 1, 'u': -2, 'g': -1, 'r': 0, 'i': 1, 'z': 2}
 
     filenames = []
     mjds = []
@@ -1639,7 +1627,7 @@ def plotfast2(setup):
             filenames += setup[_telescope][_filter]['filename']
             mjds += setup[_telescope][_filter]['mjd']
             mags += setup[_telescope][_filter]['mag']
-            shifts += [_shift[_filter]] * len(setup[_telescope][_filter]['mag'])
+            shifts += [_shift[lsc.sites.filterst1[_filter]]] * len(setup[_telescope][_filter]['mag'])
 
     def plot_hook():
         plt.figure(1)
@@ -1648,6 +1636,7 @@ def plotfast2(setup):
         plt.ylabel('Magnitude')
         for _tel, mark in zip(setup.keys(), _symbol):
             for _fil, data_dict in setup[_tel].items():
+                _fil = lsc.sites.filterst1[_fil]
                 plt.errorbar(data_dict['mjd'], np.array(data_dict['mag']) + _shift[_fil], data_dict['dmag'],
                             ls='none', color=_color[_fil], marker=mark, label=_tel+' '+_fil+'{:+.0f}'.format(_shift[_fil]))
         plt.legend(loc='best', fontsize='small', numpoints=1)

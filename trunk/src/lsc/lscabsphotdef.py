@@ -4,6 +4,7 @@ import numpy as np
 from scipy import stats, odr
 import matplotlib.pyplot as plt
 import warnings
+import lsc
 with warnings.catch_warnings(): # so cronic doesn't email on the "experimental" warning
     warnings.simplefilter('ignore')
     from astroquery.sdss import SDSS
@@ -14,10 +15,10 @@ def limmag(img, zeropoint=0, Nsigma_limit=3, _fwhm = 5):
     data = image[0].data
     #_sky = np.median(data)
     _skynoise = 1.4826 * np.median(np.abs(data - np.median(data)))
-    _exptime = hdr.get('exptime')
-    _gain = hdr.get('gain')
-    _readnoise = hdr.get('RDNOISE')
-    _pixelscale = hdr.get('PIXSCALE')
+    _exptime = lsc.util.readkey3(hdr, 'exptime')
+    _gain = lsc.util.readkey3(hdr, 'gain')
+    _readnoise = lsc.util.readkey3(hdr, 'ron')
+    _pixelscale = lsc.util.readkey3(hdr, 'pixscale')
     _radius = float(_fwhm) / float(_pixelscale)
     if _radius and _gain and _skynoise:
         print _skynoise, _gain, _radius
@@ -204,7 +205,6 @@ def onclick(event):
 
 def absphot(img,_field,_catalogue,_fix,_color,rejection,_interactive,_type='fit',redo=False,show=False,cutmag=-1,database='photlco',_calib='sloan',zcatnew=False):
     from astropy.io import fits
-    import lsc
     import math
     import sys,re,string,os
     from lsc.util import readkey3, readhdr
@@ -881,7 +881,6 @@ def fitcol(col,dmag,band,color,fissa=''):
 
 def fitcol2(_col,_dmag,band,col,fixcol='',show=False,rejection=2):
     from numpy import polyfit,polyval,argmin,sqrt,mean,array,std,compress
-    import lsc
     sss=band
     f=col
     if len(_col)>1:
@@ -987,7 +986,6 @@ def meanclip3(xx,yy,slope, clipsig=3.0, maxiter=5, converge_num=0.1, verbose=0):
 
 def makecatalogue(imglist):
     from astropy.io import fits
-    import lsc
     from numpy import array, zeros
     filters={}
     dicti={}
@@ -1182,7 +1180,6 @@ def zeropoint2(xx,mag,maxiter=10,nn=2,show=False,_cutmag=99):
 ########################################################################
 
 def transform2natural(_instrument,_catalogue,colorefisso,_inputsystem='sloan'):
-   import lsc
    import numpy as np
    _catalogue2={}
    for i in _catalogue.keys():
