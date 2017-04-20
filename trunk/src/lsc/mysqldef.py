@@ -704,7 +704,7 @@ def ingestredu(imglist,force='no',dataredutable='photlco',filetype=1):
             for voce in dictionary:
                lsc.mysqldef.updatevalue(dataredutable,voce,dictionary[voce],string.split(img,'/')[-1])
       else:
-print 'already ingested'
+   print 'already ingested'
 
 
 ###############################################################################################################################
