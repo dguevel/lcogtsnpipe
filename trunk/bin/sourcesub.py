@@ -20,7 +20,7 @@ def query_photlco_for_targets():
     query += '''AND p.filetype = 1 '''
     query += '''AND p.quality = 127 '''
     query += '''AND p.filename LIKE '%e91%' '''
-    query += '''AND p.z1 != 9999 '''
+    query += '''AND (p.z1 != 9999 or p.z2 != 9999) '''
 
     return query
 
